@@ -42,6 +42,7 @@ class Server:
     commands = attrib(default=Factory(list), repr=False, init=False)
     connections = attrib(default=Factory(list), init=False, repr=False)
     banned_hosts = attrib(default=Factory(list), repr=False)
+    started = attrib(default=Factory(lambda: None))
 
     def __attrs_post_init__(self):
         if self.factory is None:
@@ -49,7 +50,8 @@ class Server:
 
     def run(self):
         """Run the server."""
-        started = datetime.now()
+        if self.started is None:
+            self.started = datetime.now()
         reactor.listenTCP(
             self.port,
             self.factory,
@@ -61,7 +63,7 @@ class Server:
             self.port
         )
         reactor.run()
-        logger.info('Finished after %s.', datetime.now() - started)
+        logger.info('Finished after %s.', datetime.now() - self.started)
 
     def on_connect(self, caller):
         """A connection has been established. Send welcome message ETC."""
