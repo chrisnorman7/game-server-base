@@ -24,7 +24,7 @@ class Command:
 
     func = attrib()
     regexp = attrib()
-    allowed = attrib(default=Factory(lambda: lambda caller: True))
+    allowed = attrib(default=Factory(lambda: None))
 
     def __attrs_post_init__(self):
         self.regexp = compile(self.regexp)

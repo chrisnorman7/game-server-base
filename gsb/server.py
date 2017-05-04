@@ -77,7 +77,9 @@ class Server:
         caller = Caller(connection, text=line)
         for cmd in self.commands:
             caller.match = search(cmd.regexp, line)
-            if caller.match is not None:
+            if caller.match is not None and (
+                cmd.allowed is None or cmd.allowed(caller)
+            ):
                 try:
                     cmd.func(caller)
                 except DontStopException:
