@@ -14,7 +14,6 @@ class Factory(ServerFactory):
     """
     The server facotyr.
 
-    Attributes:
     server
     The instance of Server which this factory is connected to.
     protocol

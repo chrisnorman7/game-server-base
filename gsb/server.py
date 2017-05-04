@@ -16,12 +16,7 @@ logger = logging.getLogger(__name__)
 class Server:
     """
     A game server instance.
-
-    This class represents an instance of a game server. It has several
-    important properties and methods.
-    Any method which starts with on_ is an event. Events are called the same
-    as commands, except that caller.text and caller.match are both None.
-
+    This class represents an instance of a game server.
 
     port
     The port the server should run on.
@@ -29,21 +24,21 @@ class Server:
     The interface the server should listen on.
     factory
     The Twisted factory to use for dishing out connections.
+    command_class
+    The class for new commands.
+    commands
+    A list of the commands added to this server with the @Server.command
+    decorator.
     connections
     A list of protocol objects that are connected.
     banned_hosts
     A list of banned IP addresses.
-    on_connect
-    Event which fires when a client connects.
-    on_disconnect
-    An event which fires when a client disconnects.
-    run
-    A method which runs the server.
     """
 
-    interface = attrib(default=Factory(lambda: '0.0.0.0'))
     port = attrib(default=Factory(lambda: 4000))
+    interface = attrib(default=Factory(lambda: '0.0.0.0'))
     factory = attrib(default=Factory(lambda: None), repr=False)
+    command_class = attrib(default=Factory(lambda: Command))
     commands = attrib(default=Factory(list), repr=False, init=False)
     connections = attrib(default=Factory(list), init=False, repr=False)
     banned_hosts = attrib(default=Factory(list), repr=False)
@@ -126,20 +121,12 @@ class Server:
         for con in self.connections:
             self.notify(con, text)
 
-    def command(self, regexp, allowed=lambda: True):
-        """
-        Add a command to the commands list.
-
-        Arguments:
-        regexp
-        The regular expression used to invoke the command.
-        allowed
-        An optional function which should return True if the provided caller
-        is allowed to call this command.
-        """
+    def command(self, *args, **kwargs):
+        """Add a command to the commands list. Passes all arguments to
+        command_class."""
         def inner(func):
             """Add func to self.commands."""
-            cmd = Command(regexp, func, allowed)
+            cmd = self.command_class(func, *args, **kwargs)
             logger.info(
                 'Adding command %r.',
                 cmd

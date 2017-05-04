@@ -15,7 +15,6 @@ class Protocol(LineReceiver):
 
     Instances oof this class represent a connection to the server.
 
-    Attributes:
     server
     An instance of gsb.Server.
     host
