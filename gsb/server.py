@@ -65,6 +65,10 @@ class Server:
         reactor.run()
         logger.info('Finished after %s.', datetime.now() - self.started)
 
+    def on_command(self, caller):
+        """A command was sent."""
+        return True
+
     def on_error(self, caller):
         """An exception was raised by a command. In this instance caller has
         an extra exception attribute which holds the exception which was
@@ -83,27 +87,28 @@ class Server:
         """Handle a line of text from a connection."""
         # Let's build an instance of Caller:
         caller = Caller(connection, text=line)
-        for cmd in self.commands:
-            caller.match = search(cmd.regexp, line)
-            if caller.match is not None and (
-                cmd.allowed is None or cmd.allowed(caller)
-            ):
-                try:
-                    cmd.func(caller)
-                except DontStopException:
-                    continue
-                except Exception as e:
-                    caller.exception = e
-                    logger.exception(
-                        'Command %r threw an error:',
-                        cmd
-                    )
-                    logger.exception(e)
-                    self.on_error(caller)
-                break
-        else:
-            caller.match = None
-            self.huh(caller)
+        if self.on_command(caller):
+            for cmd in self.commands:
+                caller.match = search(cmd.regexp, line)
+                if caller.match is not None and (
+                    cmd.allowed is None or cmd.allowed(caller)
+                ):
+                    try:
+                        cmd.func(caller)
+                    except DontStopException:
+                        continue
+                    except Exception as e:
+                        caller.exception = e
+                        logger.exception(
+                            'Command %r threw an error:',
+                            cmd
+                        )
+                        logger.exception(e)
+                        self.on_error(caller)
+                    break
+            else:
+                caller.match = None
+                self.huh(caller)
 
     def huh(self, caller):
         """Notify the connection that we have no idea what it's on about."""

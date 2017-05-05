@@ -94,4 +94,5 @@ This object has several useful attributes and methods which are documented here:
 
 * on_connect - Called when a new client connects.
 * on_disconnect - Called after a client has disconnected.
+* on_command - Called whenever a connection sends a line of text, but before any commands have been matched. If this event evaluates to False no further processing will be performed.
 * on_error - Called when an error is raised by a command. When this event is called, the passed instance of Caller has an extra attribute `exception` which is the exceptionwhich which was raised.
