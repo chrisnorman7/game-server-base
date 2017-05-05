@@ -1,4 +1,4 @@
-"""Test a running server."""
+"""Simple chatroom with nickname capabilities."""
 
 import logging
 from attr import attrs, attrib, Factory
