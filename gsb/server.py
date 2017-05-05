@@ -136,6 +136,7 @@ class Server:
                 cmd
             )
             self.commands.append(cmd)
+            return cmd
         return inner
 
     def disconnect(self, connection):
