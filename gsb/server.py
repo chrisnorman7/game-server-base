@@ -65,6 +65,12 @@ class Server:
         reactor.run()
         logger.info('Finished after %s.', datetime.now() - self.started)
 
+    def on_error(self, caller):
+        """An exception was raised by a command. In this instance caller has
+        an extra exception attribute which holds the exception which was
+        thrown."""
+        self.notify(caller.connection, 'There was an error with your command.')
+
     def on_connect(self, caller):
         """A connection has been established. Send welcome message ETC."""
         pass
@@ -87,11 +93,13 @@ class Server:
                 except DontStopException:
                     continue
                 except Exception as e:
+                    caller.exception = e
                     logger.exception(
                         'Command %r threw an error:',
                         cmd
                     )
                     logger.exception(e)
+                    self.on_error(caller)
                 break
         else:
             caller.match = None
@@ -111,13 +119,14 @@ class Server:
 
     def notify(self, connection, text, *args, **kwargs):
         """Notify connection of text formatted with args and kwargs."""
-        connection.sendLine(
-            self.format_text(
-                text,
-                *args,
-                **kwargs
-            ).encode()
-        )
+        if connection is not None:
+            connection.sendLine(
+                self.format_text(
+                    text,
+                    *args,
+                    **kwargs
+                ).encode()
+            )
 
     def broadcast(self, text, *args, **kwargs):
         """Notify all connections."""
