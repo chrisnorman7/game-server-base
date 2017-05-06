@@ -96,3 +96,5 @@ This object has several useful attributes and methods which are documented here:
 * on_disconnect - Called after a client has disconnected.
 * on_command - Called whenever a connection sends a line of text, but before any commands have been matched. If this event evaluates to False no further processing will be performed.
 * on_error - Called when an error is raised by a command. When this event is called, the passed instance of Caller has an extra attribute `exception` which is the exceptionwhich which was raised.
+* on_start - Called by `Server.run` before `twisted.internet.reactor.run` is called. The passed instance of Caller is only there to maintain compatibility with the other events.
+* on_stop - Scheduled by `Server.run` to fire before the reactor shuts down.

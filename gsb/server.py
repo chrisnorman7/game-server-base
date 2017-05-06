@@ -62,8 +62,27 @@ class Server:
             self.interface,
             self.port
         )
+        self.on_start(Caller(None))
+        reactor.addSystemEventTrigger(
+            'before',
+            'shutdown',
+            self.on_stop,
+            Caller(None)
+        )
         reactor.run()
         logger.info('Finished after %s.', datetime.now() - self.started)
+
+    def on_start(self, caller):
+        """The server has started. The passed instance of Caller does nothing,
+        but ensures compatibility with the other events. Is called from
+        Server.run."""
+        pass
+
+    def on_stop(self, caller):
+        """The server is about to stop. The passed instance of Caller does
+        nothing but maintains compatibility with the other events. Is scheduled
+        when Server.run is used."""
+        pass
 
     def on_command(self, caller):
         """A command was sent."""
