@@ -52,3 +52,7 @@ class Protocol(LineReceiver):
             reason.getErrorMessage()
         )
         self.server.on_disconnect(Caller(self))
+
+    def notify(self, *args, **kwargs):
+        """Notify this connection of something."""
+        self.server.notify(self, *args, **kwargs)

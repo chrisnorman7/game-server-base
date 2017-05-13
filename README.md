@@ -11,10 +11,10 @@ from gsb import Server
 s = Server()
 
 
-@s.command('regexp')
+@s.command('.*')
 def func(caller):
     """Do something..."""
-    pass
+    caller.connection.notify('You entered %s.', caller.text)
 
 
 s.run()
