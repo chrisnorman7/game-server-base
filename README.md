@@ -13,7 +13,7 @@ s = Server()
 
 @s.command('regexp')
 def func(caller):
-    """Do smething..."""
+    """Do something..."""
     pass
 
 
@@ -22,7 +22,7 @@ s.run()
 
 This is a fully working text-based server.
 
-In fact the command is surpurfluous, but if it wasn't included anything you typed would result in `s.huh(caller)` being called every time.
+In fact the command is superfluous, but if it wasn't included anything you typed would result in `s.huh(caller)` being called.
 
 ### Commands
 
@@ -48,7 +48,7 @@ def start_driving(caller):
     s.notify(caller.connection, 'You drive your car.')
 ```
 
-With this setup you could have a overriding drive command, but with an extra one to provide pretty-printing. In actuality you'd probably want to simply use if, but hey, options are good, right?
+With this setup you could have an overriding drive command, but with an extra one to provide pretty-printing. In actuality you'd probably want to simply use if, but hey, options are good, right?
 
 ### Callers
 We have used this magical caller object in our commands, so let's talk a bit more about it.
@@ -86,7 +86,7 @@ This object has several useful attributes and methods which are documented here:
 * huh - Called when no commands are found.
 * format_text - Formats text according to *args and **kwargs. Allows you to pass text such as `("There are %d %s", 50, 'planets')` or `('There are %(number)d %(objects)s', number=50, objects='planets')`. Used with the notify and broadcast methods.
 * notify - Notify a single connection of some text.
-* boradcast - Notify all connected connections of some text.
+* broadcast - Notify all connected connections of some text.
 * command - A decorator to add new commands.
 * disconnect - Boot a connection.
 
@@ -95,6 +95,6 @@ This object has several useful attributes and methods which are documented here:
 * on_connect - Called when a new client connects.
 * on_disconnect - Called after a client has disconnected.
 * on_command - Called whenever a connection sends a line of text, but before any commands have been matched. If this event evaluates to False no further processing will be performed.
-* on_error - Called when an error is raised by a command. When this event is called, the passed instance of Caller has an extra attribute `exception` which is the exceptionwhich which was raised.
+* on_error - Called when an error is raised by a command. When this event is called, the passed instance of Caller has an extra `exception` attribute which is the exceptionwhich which was raised.
 * on_start - Called by `Server.run` before `twisted.internet.reactor.run` is called. The passed instance of Caller is only there to maintain compatibility with the other events.
 * on_stop - Scheduled by `Server.run` to fire before the reactor shuts down.
