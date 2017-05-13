@@ -31,8 +31,6 @@ class Server:
     decorator.
     connections
     A list of protocol objects that are connected.
-    banned_hosts
-    A list of banned IP addresses.
     """
 
     port = attrib(default=Factory(lambda: 4000))
@@ -41,12 +39,15 @@ class Server:
     command_class = attrib(default=Factory(lambda: Command))
     commands = attrib(default=Factory(list), repr=False, init=False)
     connections = attrib(default=Factory(list), init=False, repr=False)
-    banned_hosts = attrib(default=Factory(list), repr=False)
     started = attrib(default=Factory(lambda: None))
 
     def __attrs_post_init__(self):
         if self.factory is None:
             self.factory = ServerFactory(self)
+
+    def is_banned(self, host):
+        """Determine if host is banned. Simply returns False by default."""
+        return False
 
     def run(self):
         """Run the server."""

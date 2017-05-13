@@ -76,11 +76,11 @@ This object has several useful attributes and methods which are documented here:
 * command_class - The class used by the command decorator. See examples/chatroom.py for an example of a modified command_class.
 * commands - The commands which have been added with the command decorator.
 * connections - A list of all the connected clients.
-* banned_hosts - A list of banned hosts. Incoming connections are checked against this list if using the default run method.
 * started - Used by the run method to store a datetime object representing when the server was started.
 
 #### Methods
 
+* is_banned - Return whether a provided host is banned and should not be allowed to connect.
 * run - Run the server and start waiting for connections.
 * handle_line - A method which is passed a connection object and a line of text and attempts to parse it as a command. Could be overridden for example to provide functionality similar to MOO's `read()` builtin.
 * huh - Called when no commands are found.

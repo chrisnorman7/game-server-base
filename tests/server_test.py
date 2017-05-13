@@ -12,7 +12,7 @@ def command(caller):
 
 def test_init():
     assert s.connections == []
-    assert s.banned_hosts == []
+    assert s.is_banned('test') is False
 
 
 def test_command():

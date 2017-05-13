@@ -24,7 +24,7 @@ class Factory(ServerFactory):
     protocol = attrib(default=Factory(lambda: Protocol))
 
     def buildProtocol(self, addr):
-        if addr.host in self.server.banned_hosts:
+        if self.server.is_banned(addr.host):
             logger.warning(
                 'Blocked incoming connection from banned host %s.',
                 addr.host
