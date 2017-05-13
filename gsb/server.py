@@ -113,6 +113,8 @@ class Server:
                 if caller.match is not None and (
                     cmd.allowed is None or cmd.allowed(caller)
                 ):
+                    caller.args = caller.match.groups()
+                    caller.kwargs = caller.match.groupdict()
                     try:
                         cmd.func(caller)
                     except DontStopException:

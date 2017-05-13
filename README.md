@@ -60,6 +60,9 @@ An instance of `gsb.Caller` is sent as the only argument to any command or event
 * connection - The connection object which is responsible for this command or event.
 * text - The full text which was sent by the connection (or None if this is an event).
 * match - The re match object if this is a command, or None if this is an event.
+* args - The result of `match.groups()`.
+* kwargs - The result of `match.groupdict()`.
+* exception - An instance of Exception. This is only set by the on_error event.
 * dont_stop - A method which prevents the command processor from giving up looking for commands now that one has been found.
 
 ### `gsb.Server` Objects

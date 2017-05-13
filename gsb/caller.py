@@ -24,11 +24,20 @@ class Caller:
     match
     The match from the regularexpression which matched to call this command (or
     None if this is an event).
+    args
+    The result of match.groups()
+    kwargs
+    The result of match.groupdict()
+    exception
+    An exception which is set by on_error.
     """
 
     connection = attrib()
     text = attrib(default=Factory(lambda: None))
     match = attrib(default=Factory(lambda: None))
+    args = attrib(default=Factory(tuple))
+    kwargs = attrib(default=Factory(dict))
+    exception = attrib(default=Factory(lambda: None))
 
     def dont_stop(self):
         """If called from a command the command interpreter will not stop
