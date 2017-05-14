@@ -86,7 +86,8 @@ class Server:
         pass
 
     def on_command(self, caller):
-        """A command was sent."""
+        """A command was sent. This event should evaluate to True to allow
+        further processing."""
         return True
 
     def on_error(self, caller):
