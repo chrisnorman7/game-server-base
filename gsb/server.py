@@ -94,7 +94,7 @@ class Server:
         """An exception was raised by a command. In this instance caller has
         an extra exception attribute which holds the exception which was
         thrown."""
-        self.notify(caller.connection, 'There was an error with your command.')
+        caller.connection.notify('There was an error with your command.')
 
     def on_connect(self, caller):
         """A connection has been established. Send welcome message ETC."""
@@ -135,7 +135,7 @@ class Server:
 
     def huh(self, caller):
         """Notify the connection that we have no idea what it's on about."""
-        self.notify(caller.connection, "I don't understand that.")
+        caller.connection.notify("I don't understand that.")
 
     def format_text(self, text, *args, **kwargs):
         """Format text for use with notify and broadcast."""
