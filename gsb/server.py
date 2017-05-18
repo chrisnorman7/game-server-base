@@ -162,18 +162,18 @@ class Server:
         for con in self.connections:
             self.notify(con, text)
 
+    def add_command(self, func, *args, **kwargs):
+        """Add func to self.commands."""
+        cmd = self.command_class(func, *args, **kwargs)
+        self.commands.append(cmd)
+        return cmd
+
     def command(self, *args, **kwargs):
         """Add a command to the commands list. Passes all arguments to
         command_class."""
         def inner(func):
-            """Add func to self.commands."""
-            cmd = self.command_class(func, *args, **kwargs)
-            logger.info(
-                'Adding command %r.',
-                cmd
-            )
-            self.commands.append(cmd)
-            return cmd
+            """Calls self.add_command with *args and **kwargs."""
+            return self.add_command(func, *args, **kwargs)
         return inner
 
     def disconnect(self, connection):

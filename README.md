@@ -83,6 +83,7 @@ This object has several useful attributes and methods which are documented here:
 
 #### Methods
 
+* add_command - Called to add the command to the commands list.
 * is_banned - Return whether a provided host is banned and should not be allowed to connect.
 * run - Run the server and start waiting for connections.
 * handle_line - A method which is passed a connection object and a line of text and attempts to parse it as a command. Could be overridden for example to provide functionality similar to MOO's `read()` builtin.
