@@ -28,3 +28,10 @@ class Command:
 
     def __attrs_post_init__(self):
         self.regexp = compile(self.regexp)
+
+
+@attrs
+class CommandMatch:
+    """A command was matched. Yielded by Server.match_commands."""
+    command = attrib()
+    match = attrib()

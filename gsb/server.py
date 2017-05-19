@@ -7,7 +7,7 @@ from twisted.internet import reactor
 from attr import attrs, attrib, Factory
 from .caller import Caller, DontStopException
 from .factory import Factory as ServerFactory
-from .command import Command
+from .command import Command, CommandMatch
 
 logger = logging.getLogger(__name__)
 
@@ -104,31 +104,41 @@ class Server:
         """A client has disconnected."""
         pass
 
+    def match_commands(self, caller):
+        """Search for commands which match."""
+        line = caller.text
+        for cmd in self.commands:
+            match = search(cmd.regexp, line)
+            if match and (
+                cmd.allowed is None or cmd.allowed(caller)
+            ):
+                yield CommandMatch(cmd, match)
+
+    def call_command(self, command, caller):
+        """Call command with caller as it's argument."""
+        return command.func(caller)
+
     def handle_line(self, connection, line):
         """Handle a line of text from a connection."""
         # Let's build an instance of Caller:
         caller = Caller(connection, text=line)
         if self.on_command(caller):
-            for cmd in self.commands:
-                caller.match = search(cmd.regexp, line)
-                if caller.match is not None and (
-                    cmd.allowed is None or cmd.allowed(caller)
-                ):
-                    caller.args = caller.match.groups()
-                    caller.kwargs = caller.match.groupdict()
-                    try:
-                        cmd.func(caller)
-                    except DontStopException:
-                        continue
-                    except Exception as e:
-                        caller.exception = e
-                        logger.exception(
-                            'Command %r threw an error:',
-                            cmd
-                        )
-                        logger.exception(e)
-                        self.on_error(caller)
-                    break
+            for match in self.match_commands(caller):
+                caller.args = match.match.groups()
+                caller.kwargs = match.match.groupdict()
+                try:
+                    self.call_command(match.command, caller)
+                except DontStopException:
+                    continue
+                except Exception as e:
+                    caller.exception = e
+                    logger.exception(
+                        'Command %r threw an error:',
+                        match.command
+                    )
+                    logger.exception(e)
+                    self.on_error(caller)
+                break
             else:
                 caller.match = None
                 self.huh(caller)
