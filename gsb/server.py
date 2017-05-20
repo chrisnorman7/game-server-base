@@ -71,7 +71,6 @@ class Server:
             Caller(None)
         )
         reactor.run()
-        logger.info('Finished after %s.', datetime.now() - self.started)
 
     def on_start(self, caller):
         """The server has started. The passed instance of Caller does nothing,
