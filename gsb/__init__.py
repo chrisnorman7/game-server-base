@@ -8,11 +8,13 @@ from .protocol import Protocol
 from .factory import Factory
 from .caller import Caller
 from .command import Command
+from . import permissions
 
 __all__ = [
     'Server',
     'Protocol',
     'Factory',
     'Command',
-    'Caller'
+    'Caller',
+    'permissions'
 ]
