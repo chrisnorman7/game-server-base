@@ -2,12 +2,14 @@
 
 import logging
 from re import search
+from inspect import isclass
 from datetime import datetime
 from twisted.internet import reactor
 from attr import attrs, attrib, Factory
 from .caller import Caller, DontStopException
 from .factory import Factory as ServerFactory
 from .command import Command, CommandMatch
+from .intercept import Intercept
 
 logger = logging.getLogger(__name__)
 
@@ -122,25 +124,39 @@ class Server:
         # Let's build an instance of Caller:
         caller = Caller(connection, text=line)
         if self.on_command(caller):
-            for match in self.match_commands(caller):
-                caller.args = match.match.groups()
-                caller.kwargs = match.match.groupdict()
-                try:
-                    self.call_command(match.command, caller)
-                except DontStopException:
-                    continue
-                except Exception as e:
-                    caller.exception = e
-                    logger.exception(
-                        'Command %r threw an error:',
-                        match.command
-                    )
-                    logger.exception(e)
-                    self.on_error(caller)
-                break
+            if line == '@abort' and connection.intercept is not None:
+                if connection.intercept.no_abort:
+                    connection.notify(connection.intercept.no_abort)
+                    return connection.intercept.explain(connection)
+                else:
+                    connection.intercept = None
+                    connection.notify(connection.intercept.aborted)
+            elif connection.intercept:
+                intercept = connection.intercept
+                connection.intercept = None
+                intercept.feed(caller)
             else:
-                caller.match = None
-                self.huh(caller)
+                for match in self.match_commands(caller):
+                    caller.args = match.match.groups()
+                    caller.kwargs = match.match.groupdict()
+                    try:
+                        self.call_command(match.command, caller)
+                    except DontStopException:
+                        continue
+                    except Exception as e:
+                        caller.exception = e
+                        logger.exception(
+                            'Command %r threw an error:',
+                            match.command
+                        )
+                        logger.exception(e)
+                        self.on_error(caller)
+                    break
+                else:
+                    caller.args = None
+                    caller.kwargs = None
+                    caller.match = None
+                    self.huh(caller)
 
     def huh(self, caller):
         """Notify the connection that we have no idea what it's on about."""
@@ -155,15 +171,22 @@ class Server:
         return text
 
     def notify(self, connection, text, *args, **kwargs):
-        """Notify connection of text formatted with args and kwargs."""
+        """Notify connection of text formatted with args and kwargs. Supports
+        instances of, and the instanciation of Intercept."""
         if connection is not None:
-            connection.sendLine(
-                self.format_text(
-                    text,
-                    *args,
-                    **kwargs
-                ).encode()
-            )
+            if isclass(text) and issubclass(text, Intercept):
+                text = text(*args, **kwargs)
+            if isinstance(text, Intercept):
+                connection.intercept = text
+                text.explain(connection)
+            else:
+                connection.sendLine(
+                    self.format_text(
+                        text,
+                        *args,
+                        **kwargs
+                    ).encode()
+                )
 
     def broadcast(self, text, *args, **kwargs):
         """Notify all connections."""

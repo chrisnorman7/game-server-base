@@ -8,7 +8,7 @@ from .protocol import Protocol
 from .factory import Factory
 from .caller import Caller
 from .command import Command
-from . import permissions
+from . import permissions, intercept
 
 __all__ = [
     'Server',
@@ -16,5 +16,6 @@ __all__ = [
     'Factory',
     'Command',
     'Caller',
-    'permissions'
+    'permissions',
+    'intercept'
 ]
