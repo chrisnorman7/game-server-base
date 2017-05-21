@@ -21,7 +21,7 @@ class FuncPermission:
 
 def and_(*validators):
     """Ensure all validators pass."""
-    return FuncPermission(validators, any)
+    return FuncPermission(validators, all)
 
 
 def or_(*validators):
