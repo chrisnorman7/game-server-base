@@ -269,11 +269,59 @@ class Reader(Intercept, _ReaderBase):
             return super(Reader, self).feed(caller)
 
 
+@attrs
+class _YesOrNoBase:
+    """The base which makes up the YesOrNo class."""
+
+    question = attrib()
+    yes = attrib()
+
+
+@attrs
+class YesOrNo(Intercept, _YesOrNoBase):
+    """Send this to a connection to ask a simple yes or no question.
+
+    attributes:
+    question
+    The question you want to ask.
+    yes
+    The function which is called when the user answers in the afirmative.
+    no
+    The function which is called when the user answers no.
+    prompt
+    The prompt which is sent after the question to tell the user what to do.
+    """
+
+    no = attrib(
+        default=Factory(
+            lambda caller: caller.connection.notify('OK.')
+        )
+    )
+    prompt = attrib(
+        default=Factory(
+            lambda: 'Enter "yes" or "no" or @abort to abort the command.'
+        )
+    )
+
+    def explain(self, connection):
+        """Send the connection our question."""
+        connection.notify(self.question)
+        connection.notify(self.prompt)
+
+    def feed(self, caller):
+        """Check for yes or no."""
+        if caller.text.lower().startswith('y'):
+            self.yes(caller)
+        else:
+            self.no(caller)
+
+
 __all__ = [
     x.__name__ for x in [
         Intercept,
         MenuItem,
         Menu,
-        Reader
+        Reader,
+        YesOrNo
     ]
 ]
