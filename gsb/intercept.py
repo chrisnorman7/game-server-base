@@ -294,7 +294,7 @@ class YesOrNo(Intercept, _YesOrNoBase):
 
     no = attrib(
         default=Factory(
-            lambda caller: caller.connection.notify('OK.')
+            lambda: lambda caller: caller.connection.notify('OK.')
         )
     )
     prompt = attrib(
