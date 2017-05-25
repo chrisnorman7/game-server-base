@@ -158,9 +158,10 @@ class Menu(Intercept, _MenuBase):
             return self.items[num]
         except (ValueError, IndexError):
             items = []
-            for item in self.items:
-                if item.text.lower().startswith(text):
-                    items.append(item)
+            if text:
+                for item in self.items:
+                    if item.text.lower().startswith(text):
+                        items.append(item)
             if not items:  # No matches
                 if self.no_matches is None:
                     self._no_matches(caller)
