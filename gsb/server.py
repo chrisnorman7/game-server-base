@@ -3,6 +3,7 @@
 import logging
 from re import search
 from inspect import isclass
+from contextlib import contextmanager
 from datetime import datetime
 from twisted.internet import reactor
 from attr import attrs, attrib, Factory
@@ -207,6 +208,19 @@ class Server:
             """Calls self.add_command with *args and **kwargs."""
             return self.add_command(func, *args, **kwargs)
         return inner
+
+    @contextmanager
+    def default_kwargs(self, **kwargs):
+        """Decorator to automatically send kwargs to self.add_command."""
+        def f(*a, **kw):
+            for key, value in kwargs.items():
+                kw.setdefault(key, value)
+            return self.command(*a, **kw)
+        try:
+            logger.debug('Adding commands with default kwargs: %r.', kwargs)
+            yield f
+        finally:
+            logger.debug('Context manager closing.')
 
     def disconnect(self, connection):
         """Disconnect a connection."""

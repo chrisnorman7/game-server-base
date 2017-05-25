@@ -24,3 +24,12 @@ def test_command():
     )
     assert cmd.func is command
     assert s.commands == [cmd]
+
+
+def test_default_kwargs():
+    s.commands.clear()
+    with s.default_kwargs(allowed=7) as add_command:
+        cmd = add_command('^$')(command)
+        assert isinstance(cmd, Command)
+        assert cmd.func is command
+        assert cmd.allowed == 7
