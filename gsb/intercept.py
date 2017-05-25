@@ -22,7 +22,7 @@ class Intercept:
     Use instances of this class to intercept normal command processing.
 
     Attributes:
-    persistant
+    persistent
     Set the connection's intercept attribute after every feed.
     no_abort
     Don't let the user use the @abort command.
@@ -30,19 +30,19 @@ class Intercept:
     Line of text sent when a connection successfully uses @abort.
     """
 
-    persistant = attrib(default=Factory(bool))
+    persistent = attrib(default=Factory(bool))
     no_abort = attrib(default=Factory(lambda: None))
     aborted = attrib(default=Factory(lambda: 'Aborted.'))
 
     def explain(self, connection):
         """Tell the connection what we do. Called when the connection tries to
-        @abort if we're persistant and when using notify with an instance of
+        @abort if we're persistent and when using notify with an instance of
         this class."""
         pass
 
     def feed(self, caller):
         """Feed this object with a line of text."""
-        if self.persistant:
+        if self.persistent:
             caller.connection.intercept = self
 
 
@@ -127,7 +127,8 @@ class Menu(Intercept, _MenuBase):
         """The connection sent something but it doesn't match any of this menu's
         items."""
         caller.connection.notify('Invalid selection.')
-        self.explain(caller.connection)
+        if self.persistent:
+            self.explain(caller.connection)
 
     def _multiple_matches(self, caller, matches):
         """The connection entered something but it matches multiple items."""
@@ -197,7 +198,7 @@ class Reader(Intercept, _ReaderBase):
     Sent by self.explain. Can be either a string or a callable which will be
     sent an instance of Caller as its only argument. The caller's text
     attribute will be set to the text of this reader.
-    persistant
+    persistent
     Inhereted from Intercept, we use this flag to indicate whether or not this
     is a multiline reader or not. If True, keep collecting lines until a single
     full stop (.) is received.
@@ -237,7 +238,7 @@ class Reader(Intercept, _ReaderBase):
     def explain(self, connection):
         """Explain this reader."""
         if self.prompt is None:
-            if self.persistant:
+            if self.persistent:
                 connection.notify(
                     'Enter lines of text. Type a full stop (.) on a blank '
                     'line to finish%s.',
@@ -262,7 +263,7 @@ class Reader(Intercept, _ReaderBase):
         caller.text = self.get_buffer()
         if self.after_line is not None:
             self.send(self.after_line, caller)
-        if not self.persistant or caller.text == '.':
+        if not self.persistent or caller.text == '.':
             self.done(caller)
         else:
             if self.before_line is not None:
