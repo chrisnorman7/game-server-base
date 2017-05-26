@@ -107,3 +107,32 @@ def test_menu():
     c.match = 'nothing'
     with raises(NotifyException):
         assert m.match(c) is None
+
+
+def test_reader():
+    def done(caller):
+        caller.connection.text = caller.text
+    r = intercept.Reader(done)
+    assert r.done is done
+    c = Caller(p, text='testing')
+    r.feed(c)
+    assert p.text == 'testing'
+
+
+def test_abort():
+    abortable = intercept.Intercept()
+    not_abortable = intercept.Intercept(
+        no_abort='You cannot abort this test thingy'
+    )
+    p.intercept = abortable
+    try:
+        p.lineReceived('@abort'.encode())
+    except NotifyException as e:
+        assert str(e) == abortable.aborted
+    assert p.intercept is None
+    p.intercept = not_abortable
+    try:
+        p.lineReceived('@abort'.encode())
+    except NotifyException as e:
+        assert str(e) == not_abortable.no_abort
+    assert p.intercept is not_abortable

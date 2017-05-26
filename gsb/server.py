@@ -133,8 +133,9 @@ class Server:
                     connection.notify(connection.intercept.no_abort)
                     return connection.intercept.explain(connection)
                 else:
-                    connection.notify(connection.intercept.aborted)
+                    intercept = connection.intercept
                     connection.intercept = None
+                    connection.notify(intercept.aborted)
             elif connection.intercept:
                 intercept = connection.intercept
                 connection.intercept = None
