@@ -40,6 +40,7 @@ class Server:
     interface = attrib(default=Factory(lambda: '0.0.0.0'))
     factory = attrib(default=Factory(lambda: None), repr=False)
     command_class = attrib(default=Factory(lambda: Command))
+    abort_command = attrib(default=Factory(lambda: '@abort'))
     commands = attrib(default=Factory(list), repr=False, init=False)
     connections = attrib(default=Factory(list), init=False, repr=False)
     started = attrib(default=Factory(lambda: None))
@@ -125,7 +126,7 @@ class Server:
         # Let's build an instance of Caller:
         caller = Caller(connection, text=line)
         if self.on_command(caller):
-            if line == '@abort' and connection.intercept is not None:
+            if line == self.abort_command and connection.intercept is not None:
                 if connection.intercept.no_abort:
                     connection.notify(connection.intercept.no_abort)
                     return connection.intercept.explain(connection)
