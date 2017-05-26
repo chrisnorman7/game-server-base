@@ -146,7 +146,7 @@ class Menu(Intercept, _MenuBase):
             m.func(caller)
 
     def match(self, caller):
-        """Sent by the server when a menu is found.Returns either an item or
+        """Sent by the server when a menu is found. Returns either an item or
         None if no or multiple matches were found (a case which is handled by
         this function)."""
         text = caller.text.lower()

@@ -13,7 +13,7 @@ class Protocol(LineReceiver):
     """
     Server protocol
 
-    Instances oof this class represent a connection to the server.
+    Instances of this class represent a connection to the server.
 
     server
     An instance of gsb.Server.
@@ -40,6 +40,7 @@ class Protocol(LineReceiver):
                 self.port
             )
         )
+        self.intercept = None
         self.server.connections.append(self)
         self.server.on_connect(Caller(self))
 
