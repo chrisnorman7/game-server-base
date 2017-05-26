@@ -77,6 +77,7 @@ This object has several useful attributes and methods which are documented here:
 * interface - Also used by the run method and Passed to reactor.run.
 * factory - The twisted factory used by the run method. By changing this you could easily encrypt your servers with SSH or whatever else tickled your fancy.
 * command_class - The class used by the command decorator. See examples/chatroom.py for an example of a modified command_class.
+* abort_command - The command which clients can use to abort intercepts. Defaults to "@abort" to keep it inline with MOO standards.
 * commands - The commands which have been added with the command decorator.
 * connections - A list of all the connected clients.
 * started - Used by the run method to store a datetime object representing when the server was started.

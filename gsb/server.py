@@ -29,6 +29,8 @@ class Server:
     The Twisted factory to use for dishing out connections.
     command_class
     The class for new commands.
+    abort_command
+    The command which clients can use to abort intercepts.
     commands
     A list of the commands added to this server with the @Server.command
     decorator.
