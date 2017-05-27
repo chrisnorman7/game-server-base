@@ -259,11 +259,13 @@ class Reader(Intercept, _ReaderBase):
 
     def feed(self, caller):
         """Add the line of text to the buffer."""
-        self.buffer = '%s\n%s' % (self.buffer, caller.text)
-        caller.text = self.get_buffer()
+        line = caller.text
         if self.after_line is not None:
             self.send(self.after_line, caller)
-        if not self.persistent or caller.text == '.':
+        if not self.persistent or line != '.':
+            self.buffer = '%s\n%s' % (self.buffer, line)
+        caller.text = self.get_buffer()
+        if not self.persistent or line == '.':
             self.done(caller)
         else:
             if self.before_line is not None:

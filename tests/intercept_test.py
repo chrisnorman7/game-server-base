@@ -117,6 +117,15 @@ def test_reader():
     c = Caller(p, text='testing')
     r.feed(c)
     assert p.text == 'testing'
+    r.buffer = ''
+    p.text = None
+    r.persistent = True
+    r.feed(Caller(p, text='1'))
+    assert p.text is None
+    r.feed(Caller(p, text='2'))
+    assert p.text is None
+    r.feed(Caller(p, text='.'))
+    assert p.text == '1\n2'
 
 
 def test_abort():
