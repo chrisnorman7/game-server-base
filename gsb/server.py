@@ -218,7 +218,14 @@ class Server:
         """Decorator to automatically send kwargs to self.add_command."""
         def f(*a, **kw):
             for key, value in kwargs.items():
-                kw.setdefault(key, value)
+                if key in kw:
+                    logger.warning(
+                        'Keyword argument %s specified twice: %r, %r.',
+                        key,
+                        a,
+                        kw
+                    )
+                kw[key] = value
             return self.command(*a, **kw)
         try:
             logger.debug('Adding commands with default kwargs: %r.', kwargs)
