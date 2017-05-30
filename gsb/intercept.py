@@ -73,7 +73,6 @@ class MenuItem:
 class _MenuBase:
     """Provides the title and items attributes."""
     title = attrib(validator=validators.instance_of(six.string_types))
-    items = attrib(validator=validators.instance_of(list))
 
 
 @attrs
@@ -98,6 +97,10 @@ class Menu(Intercept, _MenuBase):
     Defaults to Menu._multiple_matches.
     """
 
+    items = attrib(
+        default=Factory(list),
+        validator=validators.instance_of(list)
+    )
     prompt = attrib(
         default=Factory(lambda: 'Type a number or @abort to abort.'),
         validator=validators.instance_of(six.string_types)
@@ -108,6 +111,16 @@ class Menu(Intercept, _MenuBase):
     def __attrs_post_init__(self):
         for item in self.items:
             item.index = self.items.index(item) + 1
+
+    def item(self, name):
+        """A decorator to add an item with the specified name."""
+        def inner(func):
+            """Add the item."""
+            i = MenuItem(name, func)
+            self.items.append(i)
+            self.__attrs_post_init__()
+            return i
+        return inner
 
     def explain(self, connection):
         """Explain this menu to connection."""

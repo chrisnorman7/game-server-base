@@ -94,7 +94,7 @@ def test_menu():
     i1 = intercept.MenuItem('First Thing', menu_command_1)
     i2 = intercept.MenuItem('second Thing', menu_command_2)
     i3 = intercept.MenuItem('Third Thing', menu_command_3)
-    m = intercept.Menu('Test Menu', [i1, i2, i3])
+    m = intercept.Menu('Test Menu', items=[i1, i2, i3])
     assert m.title == 'Test Menu'
     c = Caller(p)
     c.text = '$'
@@ -145,3 +145,20 @@ def test_abort():
     except NotifyException as e:
         assert str(e) == not_abortable.no_abort
     assert p.intercept is not_abortable
+
+
+def test_subclass_menu():
+    m = intercept.Menu('Test Menu')
+    assert m.items == []
+    item_name = 'First Item'
+    i = m.item(item_name)(print)
+    assert isinstance(i, intercept.MenuItem)
+    assert i.func is print
+    assert i.text == item_name
+    assert i.index == 1
+    second_item_name = 'Second Test Item'
+    i2 = m.item(second_item_name)(id)
+    assert isinstance(i2, intercept.MenuItem)
+    assert i2.text == second_item_name
+    assert i2.index == 2
+    assert i2.func == id
