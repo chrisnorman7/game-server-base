@@ -5,6 +5,14 @@ from attr import attrs
 from gsb import Server, Protocol, Caller, intercept
 
 
+class YesException(Exception):
+    pass
+
+
+class NoException(Exception):
+    pass
+
+
 class MenuItem1(Exception):
     pass
 
@@ -162,3 +170,24 @@ def test_subclass_menu():
     assert i2.text == second_item_name
     assert i2.index == 2
     assert i2.func == id
+
+
+def test_yes_or_no():
+
+    def yes(caller):
+        raise YesException
+
+    def no(caller):
+        raise NoException
+
+    question = 'This is a test?'
+    yon = intercept.YesOrNo(question, yes, no=no)
+    assert yon.question == question
+    assert yon.yes is yes
+    assert yon.no is no
+    for response in ['yes', 'y', 'ye']:
+        with raises(YesException):
+            yon.feed(Caller(p, text=response))
+    for response in ['no', 'n', 'anything should be fine here']:
+        with raises(NoException):
+            yon.feed(Caller(p, text=response))
