@@ -58,6 +58,10 @@ class MenuItem:
     to take an instance of Caller as it's only argument.
     index
     The index of this item. Set automatically by Menu.__attrs_post_init__.
+
+    For Menu instances, the persistent attribute means they will continue to
+    expect input until a valid match is found, or @abort is sent (assuming this
+    instance is abortable).
     """
 
     text = attrib(validator=validators.instance_of(six.string_types))
@@ -72,7 +76,20 @@ class MenuItem:
 @attrs
 class _MenuBase:
     """Provides the title and items attributes."""
-    title = attrib(validator=validators.instance_of(six.string_types))
+    title = attrib(
+        default=Factory(lambda: 'Select an item:'),
+        validator=validators.instance_of(six.string_types)
+    )
+    items = attrib(
+        default=Factory(list),
+        validator=validators.instance_of(list)
+    )
+    prompt = attrib(
+        default=Factory(lambda: 'Type a number or @abort to abort.'),
+        validator=validators.instance_of(six.string_types)
+    )
+    no_matches = attrib(default=Factory(lambda: None))
+    multiple_matches = attrib(default=Factory(lambda: None))
 
 
 @attrs
@@ -96,17 +113,6 @@ class Menu(Intercept, _MenuBase):
     instance of Caller and a list of the MenuItem instances which matched.
     Defaults to Menu._multiple_matches.
     """
-
-    items = attrib(
-        default=Factory(list),
-        validator=validators.instance_of(list)
-    )
-    prompt = attrib(
-        default=Factory(lambda: 'Type a number or @abort to abort.'),
-        validator=validators.instance_of(six.string_types)
-    )
-    no_matches = attrib(default=Factory(lambda: None))
-    multiple_matches = attrib(default=Factory(lambda: None))
 
     def __attrs_post_init__(self):
         for item in self.items:
@@ -195,6 +201,13 @@ class _ReaderBase:
     """Provides the positional attributes of Reader."""
 
     done = attrib()
+    prompt = attrib(default=Factory(lambda: None))
+    before_line = attrib(default=Factory(lambda: None))
+    after_line = attrib(default=Factory(lambda: None))
+    buffer = attrib(
+        default=Factory(str),
+        validator=validators.instance_of(six.string_types)
+    )
 
 
 @attrs
@@ -226,15 +239,6 @@ class Reader(Intercept, _ReaderBase):
     buffer
     The text received so far.
     """
-    prompt = attrib(
-        default=Factory(lambda: None),
-    )
-    before_line = attrib(default=Factory(lambda: None))
-    after_line = attrib(default=Factory(lambda: None))
-    buffer = attrib(
-        default=Factory(str),
-        validator=validators.instance_of(six.string_types)
-    )
 
     def send(self, thing, caller):
         """If self.name is a callable call it with caller. Otherwise use
@@ -292,6 +296,16 @@ class _YesOrNoBase:
 
     question = attrib()
     yes = attrib()
+    no = attrib(
+        default=Factory(
+            lambda: lambda caller: caller.connection.notify('OK.')
+        )
+    )
+    prompt = attrib(
+        default=Factory(
+            lambda: 'Enter "yes" or "no" or @abort to abort the command.'
+        )
+    )
 
 
 @attrs
@@ -308,17 +322,6 @@ class YesOrNo(Intercept, _YesOrNoBase):
     prompt
     The prompt which is sent after the question to tell the user what to do.
     """
-
-    no = attrib(
-        default=Factory(
-            lambda: lambda caller: caller.connection.notify('OK.')
-        )
-    )
-    prompt = attrib(
-        default=Factory(
-            lambda: 'Enter "yes" or "no" or @abort to abort the command.'
-        )
-    )
 
     def explain(self, connection):
         """Send the connection our question."""
