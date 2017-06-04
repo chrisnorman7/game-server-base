@@ -139,7 +139,13 @@ class Server:
             elif connection.intercept:
                 intercept = connection.intercept
                 connection.intercept = None
-                intercept.feed(caller)
+                try:
+                    intercept.feed(caller)
+                except Exception as e:
+                    caller.exception = e
+                    logger.warning('Intercept %r threw an error:', intercept)
+                    logger.exception(e)
+                    self.on_error(caller)
             else:
                 for match in self.match_commands(caller):
                     caller.args = match.match.groups()
