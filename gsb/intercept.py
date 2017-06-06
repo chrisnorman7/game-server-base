@@ -1,5 +1,6 @@
 """
-Provides the intercept class as well as a couple of useful subclasses.
+Provides the intercept class, a couple of useful subclasses, and some useful
+functions.
 
 To Use them, simply send an instance of Intercept with any of the notify
 functions.
@@ -9,9 +10,20 @@ You can also lazily create Intercept (or subclass) instances with notify:
 con.notify(Intercept, ...)
 
 The notify code will create the instance for you and do its thing.
+
+Functions:
+after
+A contextmanager to use to call a function after a function.
+
+For example:
+with after(print, 'Done.'):
+    # Do something.
+
+Calls callback with *args and **kwargs after the body has been executed.
 """
 
 import six
+from contextlib import contextmanager
 from attr import attrs, attrib, Factory, validators
 from .caller import Caller
 
@@ -336,12 +348,20 @@ class YesOrNo(Intercept, _YesOrNoBase):
             self.no(caller)
 
 
+@contextmanager
+def after(_f, *args, **kwargs):
+    """Call _f(*args, **kwargs) after everything else has been done."""
+    yield
+    _f(*args, **kwargs)
+
+
 __all__ = [
     x.__name__ for x in [
         Intercept,
         MenuItem,
         Menu,
         Reader,
-        YesOrNo
+        YesOrNo,
+        after
     ]
 ]

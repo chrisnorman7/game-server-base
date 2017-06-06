@@ -13,6 +13,10 @@ class NoException(Exception):
     pass
 
 
+class AfterException(Exception):
+    pass
+
+
 class MenuItem1(Exception):
     pass
 
@@ -191,3 +195,18 @@ def test_yes_or_no():
     for response in ['no', 'n', 'anything should be fine here']:
         with raises(NoException):
             yon.feed(Caller(p, text=response))
+
+
+def test_after():
+    args = (1, 2, 3)
+    kwargs = {'hello': 'world'}
+
+    def f(*args, **kwargs):
+        assert args == args
+        assert kwargs == kwargs
+        raise AfterException
+    with raises(AfterException), intercept.after(f, *args, **kwargs):
+        assert 1 is 1
+    with raises(RuntimeError):
+        with intercept.after(print, 'Never should happen!'):
+            raise RuntimeError()
