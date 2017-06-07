@@ -29,12 +29,6 @@ class Protocol(LineReceiver):
 
     def lineReceived(self, line):
         """Handle a line from a client."""
-        try:
-            line = line.decode()
-        except Exception as e:
-            self.notify('Input error.')
-            self.logger.warning('Failed to decode %r.', line)
-            return self.logger.exception(e)
         self.server.handle_line(self, line)
 
     def connectionMade(self):
