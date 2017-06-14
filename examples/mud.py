@@ -351,6 +351,34 @@ with server.default_kwargs(
         m.item('Clear Room Description')(clear)
         player.notify(m)
 
+    @command('^(?:say |\'|")([^$]+)$')
+    def do_say(caller):
+        """Say something."""
+        player = caller.connection.player
+        for obj in player.location.contents:
+            obj.notify('%s says: "%s"', player.name, *caller.args)
+
+    @command('^(?:shout |@shout |!)([^$]+)$')
+    def do_shout(caller):
+        """Shout something to everyone."""
+        server.broadcast(
+            '%s shouts: "%s"',
+            caller.connection.player.name,
+            *caller.args
+        )
+
+    @command('^(?:who|@who)$')
+    def do_who(caller):
+        """Show who is logged in."""
+        player = caller.connection.player
+        player.notify('Connected players:')
+        for con in server.connections:
+            if con.player is None:
+                name = 'Unauthenticated player'
+            else:
+                name = con.player.name
+            player.notify('%s from %s:%d', name, con.host, con.port)
+
 if __name__ == '__main__':
     logging.basicConfig(level='INFO')
     server.run()
