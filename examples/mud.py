@@ -24,6 +24,15 @@ class MudServer(Server):
         caller.connection.player = None
         caller.connection.notify(welcome_msg)
 
+    def on_disconnect(self, caller):
+        """Clear caller.connection.player.connection if it's not None."""
+        if caller.connection.player is not None:
+            caller.connection.player.connection = None
+            server.broadcast(
+                '%s has disconnected.',
+                caller.connection.player.name
+            )
+
     def huh(self, caller):
         """Check for exits."""
         player = caller.connection.player
@@ -252,10 +261,17 @@ def do_connect(caller):
             obj.set_password(password)
             obj.save()
         if obj.check_password(password):
+            if hasattr(obj, 'connection') and obj.connection is not None:
+                old = obj.connection
+                old.player = None
+                obj.connection = None
+                old.notify('** Reconnecting somewhere else.')
+                server.disconnect(old)
             obj.connection = con
             con.player = obj
             obj.notify('Welcome back, %s.', obj.name)
             obj.do_look()
+            server.broadcast('%s has connected.', obj.name)
         else:
             con.notify('Incorrect password.')
 
