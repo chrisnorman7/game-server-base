@@ -189,6 +189,7 @@ class Menu(Intercept, _MenuBase):
         label = get_label()
         if label is not None and label.after is None:
             connection.notify(label.text)
+            label = get_label()
         for i in items:
             connection.notify(str(i))
             if label is not None and label.after is i:
