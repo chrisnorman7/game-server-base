@@ -86,6 +86,24 @@ class MenuItem:
 
 
 @attrs
+class MenuLabel:
+    """
+    A menu heading.
+
+    text
+    The text to print to the user.
+    after
+    The MenuItem instance this label comes after or None if it's at the
+    beginning.
+    """
+    text = attrib(validator=validators.instance_of(six.string_types))
+    before = attrib()
+
+    def __str__(self):
+        return self.text
+
+
+@attrs
 class _MenuBase:
     """Provides the title and items attributes."""
     title = attrib(
@@ -93,6 +111,10 @@ class _MenuBase:
         validator=validators.instance_of(six.string_types)
     )
     items = attrib(
+        default=Factory(list),
+        validator=validators.instance_of(list)
+    )
+    labels = attrib(
         default=Factory(list),
         validator=validators.instance_of(list)
     )
@@ -130,6 +152,12 @@ class Menu(Intercept, _MenuBase):
         for item in self.items:
             item.index = self.items.index(item) + 1
 
+    def add_label(self, text, after):
+        """Add a label."""
+        l = MenuLabel(text, after)
+        self.labels.append(l)
+        return l
+
     def item(self, name):
         """A decorator to add an item with the specified name."""
         def inner(func):
@@ -149,9 +177,22 @@ class Menu(Intercept, _MenuBase):
     def send_items(self, connection, items=None):
         """Send the provided items to connection. If items is None use
         self.items."""
+        labels = [x for x in self.labels]
         if items is None:
             items = self.items
+
+        def get_label():
+            """Get the next label."""
+            if labels:
+                return labels.pop(0)
+
+        label = get_label()
+        if label is not None and label.before is None:
+            connection.notify(label.text)
         for i in items:
+            if label is not None and label.before is i:
+                connection.notify(label.text)
+                label = get_label()
             connection.notify(str(i))
 
     def _no_matches(self, caller):
