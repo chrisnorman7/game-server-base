@@ -97,7 +97,7 @@ class MenuLabel:
     beginning.
     """
     text = attrib(validator=validators.instance_of(six.string_types))
-    before = attrib()
+    after = attrib()
 
     def __str__(self):
         return self.text
@@ -187,13 +187,13 @@ class Menu(Intercept, _MenuBase):
                 return labels.pop(0)
 
         label = get_label()
-        if label is not None and label.before is None:
+        if label is not None and label.after is None:
             connection.notify(label.text)
         for i in items:
-            if label is not None and label.before is i:
+            connection.notify(str(i))
+            if label is not None and label.after is i:
                 connection.notify(label.text)
                 label = get_label()
-            connection.notify(str(i))
 
     def _no_matches(self, caller):
         """The connection sent something but it doesn't match any of this menu's
