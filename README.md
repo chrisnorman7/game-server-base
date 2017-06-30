@@ -78,6 +78,7 @@ This object has several useful attributes and methods which are documented here:
 * factory - The twisted factory used by the run method. By changing this you could easily encrypt your servers with SSH or whatever else tickled your fancy.
 * command_class - The class used by the command decorator. See examples/chatroom.py for an example of a modified command_class.
 * abort_command - The command which clients can use to abort intercepts. Defaults to "@abort" to keep it inline with MOO standards.
+* spell_check_command - The command which clients can use to spell check multiline Reader intercepts.
 * commands - The commands which have been added with the command decorator.
 * connections - A list of all the connected clients.
 * started - Used by the run method to store a datetime object representing when the server was started.
@@ -96,6 +97,7 @@ This object has several useful attributes and methods which are documented here:
 * broadcast - Notify all connected connections of some text.
 * command - A decorator to add new commands.
 * disconnect - Boot a connection.
+* check_word - Allows you to extend the spell checking system with personal dictionaries and the like.
 
 #### Events
 

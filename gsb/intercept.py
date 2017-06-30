@@ -411,8 +411,15 @@ class SpellCheckerMenu(Menu, _SpellCheckerMenuBase):
         self.items.clear()
         if not hasattr(self, 'ignored'):
             self.ignored = []  # Ignore words.
-        for word in re.findall('[a-zA-Z]+', self.text):
-            if not dictionary.check(word):
+        for word in re.findall(
+            "[a-zA-Z'-]",
+            self.text
+        ):
+            if not dictionary.check(
+                word
+            ) and not connection.server.check_word(
+                Caller(connection, text=word)
+            ):
                 self.word = word
                 self.title = 'Misspelled word: %s.' % word
                 self.add_label('Suggestions', None)

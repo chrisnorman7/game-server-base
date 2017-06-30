@@ -267,3 +267,8 @@ class Server:
     def disconnect(self, connection):
         """Disconnect a connection."""
         connection.transport.loseConnection()
+
+    def check_word(self, caller):
+        """Spell check the word found in caller.text. Should return True if the
+        word is OK or False otherwise."""
+        return False
