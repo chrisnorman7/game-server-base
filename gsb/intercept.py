@@ -22,10 +22,15 @@ with after(print, 'Done.'):
 Calls callback with *args and **kwargs after the body has been executed.
 """
 
+import re
 import six
+from functools import partial
 from contextlib import contextmanager
 from attr import attrs, attrib, Factory, validators
+from enchant import Dict
 from .caller import Caller
+
+dictionary = Dict()
 
 
 @attrs
@@ -390,6 +395,72 @@ class YesOrNo(Intercept, _YesOrNoBase):
             self.no(caller)
 
 
+@attrs
+class _SpellCheckerMenuBase:
+    text = attrib()
+    after = attrib()
+
+
+@attrs
+class SpellCheckerMenu(Menu, _SpellCheckerMenuBase):
+    """A spell checker menu."""
+    def explain(self, connection):
+        """Build the menu first."""
+        self.word = None  # The misspelled word.
+        self.labels.clear()
+        self.items.clear()
+        if not hasattr(self, 'ignored'):
+            self.ignored = []  # Ignore words.
+        for word in re.findall('[a-zA-Z]+', self.text):
+            if not dictionary.check(word):
+                self.word = word
+                self.title = 'Misspelled word: %s.' % word
+                self.add_label('Suggestions', None)
+                for suggestion in dictionary.suggest(word):
+                    self.item(
+                        suggestion
+                    )(
+                        partial(
+                            self.replace,
+                            word=suggestion
+                        )
+                    )
+                self.add_label('Actions', self.items[-1])
+                self.item('Ignore')(self.ignore)
+                self.item('Edit Word')(self.edit)
+                return super(SpellCheckerMenu, self).explain(connection)
+        connection.intercept = None
+        caller = Caller(
+            connection,
+            text=self.text.format(*self.ignored)
+        )
+        self.after(caller)
+
+    def replace(self, caller, word=None):
+        """Replace a misspelled word with word. If word is None, use
+        caller.text."""
+        if word is None:
+            word = caller.text
+        self.text = self.text.replace(self.word, word)
+        caller.connection.notify(self)
+
+    def ignore(self, caller):
+        """Ignore all occurrances of a misspelled word."""
+        word = self.word
+        if word not in self.ignored:
+            self.ignored.append(word)
+        self.text = self.text.replace(
+            word,
+            '{%d}' % self.ignored.index(word)
+        )
+        caller.connection.notify(self)
+
+    def edit(self, caller):
+        """Enter the replacement by hand."""
+        caller.connection.notify('Enter the new word:')
+        caller.connection.notify(Reader, self.replace)
+
+
 @contextmanager
 def after(_f, *args, **kwargs):
     """Call _f(*args, **kwargs) after everything else has been done."""
@@ -404,6 +475,7 @@ __all__ = [
         Menu,
         Reader,
         YesOrNo,
-        after
+        after,
+        SpellCheckerMenu
     ]
 ]
