@@ -10,7 +10,7 @@ from attr import attrs, attrib, Factory
 from .caller import Caller, DontStopException
 from .factory import Factory as ServerFactory
 from .command import Command, CommandMatch
-from .intercept import Intercept
+from .intercept import Intercept, Reader, SpellCheckerMenu
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,9 @@ class Server:
     The class for new commands.
     abort_command
     The command which clients can use to abort intercepts.
+    spell_check_command
+    The command which clients can use while being intercepted by an insstance
+    of Reader to initiate spell checking.
     commands
     A list of the commands added to this server with the @Server.command
     decorator.
@@ -43,6 +46,7 @@ class Server:
     factory = attrib(default=Factory(lambda: None), repr=False)
     command_class = attrib(default=Factory(lambda: Command))
     abort_command = attrib(default=Factory(lambda: '@abort'))
+    spell_check_command = attrib(default=Factory(lambda: '.spell'))
     commands = attrib(default=Factory(list), repr=False, init=False)
     connections = attrib(default=Factory(list), init=False, repr=False)
     started = attrib(default=Factory(lambda: None))
@@ -50,6 +54,14 @@ class Server:
     def __attrs_post_init__(self):
         if self.factory is None:
             self.factory = ServerFactory(self)
+
+    def reinstate_intercept(self, intercept):
+        """Reinstate the provided intercept after the spell checker has
+        finished running."""
+        def inner(caller):
+            intercept.buffer = caller.text
+            caller.connection.notify(intercept)
+        return inner
 
     def is_banned(self, host):
         """Determine if host is banned. Simply returns False by default."""
@@ -127,7 +139,7 @@ class Server:
         """Handle a line of text from a connection."""
         # Let's build an instance of Caller:
         caller = Caller(connection, text=line)
-        if self.on_command(caller):
+        if self.on_command(caller):  # Processing can continue.
             if line == self.abort_command and connection.intercept is not None:
                 if connection.intercept.no_abort:
                     connection.notify(connection.intercept.no_abort)
@@ -139,13 +151,26 @@ class Server:
             elif connection.intercept:
                 intercept = connection.intercept
                 connection.intercept = None
-                try:
-                    intercept.feed(caller)
-                except Exception as e:
-                    caller.exception = e
-                    logger.warning('Intercept %r threw an error:', intercept)
-                    logger.exception(e)
-                    self.on_error(caller)
+                if isinstance(
+                    intercept,
+                    Reader
+                ) and line == self.spell_check_command:
+                    connection.notify(
+                        SpellCheckerMenu,
+                        intercept.get_buffer(),
+                        self.reinstate_intercept(intercept)
+                    )
+                else:
+                    try:
+                        intercept.feed(caller)
+                    except Exception as e:
+                        caller.exception = e
+                        logger.warning(
+                            'Intercept %r threw an error:',
+                            intercept
+                        )
+                        logger.exception(e)
+                        self.on_error(caller)
             else:
                 for match in self.match_commands(caller):
                     caller.args = match.match.groups()
