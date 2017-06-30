@@ -268,6 +268,10 @@ class Server:
         """Disconnect a connection."""
         connection.transport.loseConnection()
 
+    def add_word(self, caller):
+        """Add a word to a personal dictionary."""
+        raise NotImplemented
+
     def check_word(self, caller):
         """Spell check the word found in caller.text. Should return True if the
         word is OK or False otherwise."""

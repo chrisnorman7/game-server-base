@@ -412,30 +412,32 @@ class SpellCheckerMenu(Menu, _SpellCheckerMenuBase):
         if not hasattr(self, 'ignored'):
             self.ignored = []  # Ignore words.
         for word in re.findall(
-            "[a-zA-Z'-]",
+            "[a-zA-Z'-]+",
             self.text
         ):
-            if not dictionary.check(
+            if dictionary.check(
                 word
-            ) and not connection.server.check_word(
+            ) or connection.server.check_word(
                 Caller(connection, text=word)
             ):
-                self.word = word
-                self.title = 'Misspelled word: %s.' % word
-                self.add_label('Suggestions', None)
-                for suggestion in dictionary.suggest(word):
-                    self.item(
-                        suggestion
-                    )(
-                        partial(
-                            self.replace,
-                            word=suggestion
-                        )
+                continue
+            self.word = word
+            self.title = 'Misspelled word: %s.' % word
+            self.add_label('Suggestions', None)
+            for suggestion in dictionary.suggest(word):
+                self.item(
+                    suggestion
+                )(
+                    partial(
+                        self.replace,
+                        word=suggestion
                     )
-                self.add_label('Actions', self.items[-1])
-                self.item('Ignore')(self.ignore)
-                self.item('Edit Word')(self.edit)
-                return super(SpellCheckerMenu, self).explain(connection)
+                )
+            self.add_label('Actions', self.items[-1])
+            self.item('Ignore')(self.ignore)
+            self.item('Add to personal dictionary')(self.add_word)
+            self.item('Edit Word')(self.edit)
+            return super(SpellCheckerMenu, self).explain(connection)
         connection.intercept = None
         caller = Caller(
             connection,
@@ -459,6 +461,14 @@ class SpellCheckerMenu(Menu, _SpellCheckerMenuBase):
         self.text = self.text.replace(
             word,
             '{%d}' % self.ignored.index(word)
+        )
+        caller.connection.notify(self)
+
+    def add_word(self, caller):
+        """Add the current word to the personal dictionary via
+        server.add_word."""
+        caller.connection.server.add_word(
+            Caller(caller.connection, text=self.word)
         )
         caller.connection.notify(self)
 
