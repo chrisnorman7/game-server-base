@@ -3,6 +3,7 @@ twisted.protocols.basic.LineReceiver until I figure out how the Telnet protocol
 works."""
 
 import logging
+import sys
 from twisted.protocols.basic import LineReceiver
 from attr import attrs, attrib
 from .caller import Caller
@@ -29,7 +30,7 @@ class Protocol(LineReceiver):
 
     def lineReceived(self, line):
         """Handle a line from a client."""
-        line = line.decode()
+        line = line.decode(sys.getdefaultencoding(), 'ignore')
         self.server.handle_line(self, line)
 
     def connectionMade(self):
