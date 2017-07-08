@@ -18,6 +18,15 @@ class Parser:
     command_separator = attrib(default=Factory(lambda: ' '))
     commands = attrib(default=Factory(dict), repr=False)
 
+    def all_commands(self):
+        """Get all the command objects present on this parser."""
+        l = list()
+        for objects in self.commands.values():
+            for cmd in objects:
+                if cmd not in l:
+                    l.append(cmd)
+        return l
+
     def huh(self, caller):
         """Notify the connection that we have no idea what it's on about."""
         caller.connection.notify("I don't understand that.")

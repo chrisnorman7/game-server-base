@@ -55,3 +55,10 @@ def test_names():
 def test_description():
     cmd = p.command(func=print)
     assert cmd.description == print.__doc__
+
+
+def test_all_commands():
+    p.commands.clear()
+    first = p.command(func=print)
+    second = p.command(func=exec)
+    assert p.all_commands() == [first, second]
