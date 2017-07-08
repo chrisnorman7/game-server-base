@@ -1,3 +1,2 @@
 twisted
 attrs
-pyenchant
