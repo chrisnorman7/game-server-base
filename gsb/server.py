@@ -1,15 +1,13 @@
 """Contains the Server base class."""
 
 import logging
-from re import search
 from inspect import isclass
-from contextlib import contextmanager
 from datetime import datetime
 from twisted.internet import reactor
 from attr import attrs, attrib, Factory
 from .caller import Caller, DontStopException
+from .parser import Parser
 from .factory import Factory as ServerFactory
-from .command import Command, CommandMatch
 from .intercept import Intercept, Reader, SpellCheckerMenu
 
 logger = logging.getLogger(__name__)
@@ -27,41 +25,24 @@ class Server:
     The interface the server should listen on.
     factory
     The Twisted factory to use for dishing out connections.
-    command_class
-    The class for new commands.
-    abort_command
-    The command which clients can use to abort intercepts.
-    spell_check_command
-    The command which clients can use while being intercepted by an insstance
-    of Reader to initiate spell checking.
-    commands
-    A list of the commands added to this server with the @Server.command
-    decorator.
+    default_parser
+    The default instance of Parser for new connections.
     connections
     A list of protocol objects that are connected.
+    Started
+    The time the server was started with Server.run.
     """
 
     port = attrib(default=Factory(lambda: 4000))
     interface = attrib(default=Factory(lambda: '0.0.0.0'))
     factory = attrib(default=Factory(lambda: None), repr=False)
-    command_class = attrib(default=Factory(lambda: Command))
-    abort_command = attrib(default=Factory(lambda: '@abort'))
-    spell_check_command = attrib(default=Factory(lambda: '.spell'))
-    commands = attrib(default=Factory(list), repr=False, init=False)
+    default_parser = attrib(default=Factory(Parser), repr=False)
     connections = attrib(default=Factory(list), init=False, repr=False)
-    started = attrib(default=Factory(lambda: None))
+    started = attrib(default=Factory(lambda: None), init=False)
 
     def __attrs_post_init__(self):
         if self.factory is None:
             self.factory = ServerFactory(self)
-
-    def reinstate_intercept(self, intercept):
-        """Reinstate the provided intercept after the spell checker has
-        finished running."""
-        def inner(caller):
-            intercept.buffer = caller.text
-            caller.connection.notify(intercept)
-        return inner
 
     def is_banned(self, host):
         """Determine if host is banned. Simply returns False by default."""
@@ -70,7 +51,7 @@ class Server:
     def run(self):
         """Run the server."""
         if self.started is None:
-            self.started = datetime.now()
+            self.started = datetime.utcnow()
         reactor.listenTCP(
             self.port,
             self.factory,
@@ -102,17 +83,6 @@ class Server:
         when Server.run is used."""
         pass
 
-    def on_command(self, caller):
-        """A command was sent. This event should evaluate to True to allow
-        further processing."""
-        return True
-
-    def on_error(self, caller):
-        """An exception was raised by a command. In this instance caller has
-        an extra exception attribute which holds the exception which was
-        thrown."""
-        caller.connection.notify('There was an error with your command.')
-
     def on_connect(self, caller):
         """A connection has been established. Send welcome message ETC."""
         pass
@@ -120,20 +90,6 @@ class Server:
     def on_disconnect(self, caller):
         """A client has disconnected."""
         pass
-
-    def match_commands(self, caller):
-        """Search for commands which match."""
-        line = caller.text
-        for cmd in self.commands:
-            match = search(cmd.regexp, line)
-            if match and (
-                cmd.allowed is None or cmd.allowed(caller)
-            ):
-                yield CommandMatch(cmd, match)
-
-    def call_command(self, command, caller):
-        """Call command with caller as it's argument."""
-        return command.func(caller)
 
     def handle_line(self, connection, line):
         """Handle a line of text from a connection."""
@@ -194,10 +150,6 @@ class Server:
                     caller.match = None
                     self.huh(caller)
 
-    def huh(self, caller):
-        """Notify the connection that we have no idea what it's on about."""
-        caller.connection.notify("I don't understand that.")
-
     def format_text(self, text, *args, **kwargs):
         """Format text for use with notify and broadcast."""
         if args:
@@ -244,35 +196,6 @@ class Server:
             return self.add_command(func, *args, **kwargs)
         return inner
 
-    @contextmanager
-    def default_kwargs(self, **kwargs):
-        """Decorator to automatically send kwargs to self.add_command."""
-        def f(*a, **kw):
-            for key, value in kwargs.items():
-                if key in kw:
-                    logger.warning(
-                        'Keyword argument %s specified twice: %r, %r.',
-                        key,
-                        a,
-                        kw
-                    )
-                kw[key] = value
-            return self.command(*a, **kw)
-        try:
-            logger.debug('Adding commands with default kwargs: %r.', kwargs)
-            yield f
-        finally:
-            logger.debug('Context manager closing.')
-
     def disconnect(self, connection):
         """Disconnect a connection."""
         connection.transport.loseConnection()
-
-    def add_word(self, caller):
-        """Add a word to a personal dictionary."""
-        raise NotImplemented
-
-    def check_word(self, caller):
-        """Spell check the word found in caller.text. Should return True if the
-        word is OK or False otherwise."""
-        return False

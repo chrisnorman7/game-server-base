@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @attrs
 class Factory(ServerFactory):
     """
-    The server facotyr.
+    The server factory.
 
     server
     The instance of Server which this factory is connected to.
@@ -38,4 +38,6 @@ class Factory(ServerFactory):
             return self.protocol(
                 self.server,
                 addr.host,
-                addr.port)
+                addr.port,
+                self.server.default_parser
+            )

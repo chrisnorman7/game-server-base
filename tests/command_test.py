@@ -1,8 +1,8 @@
 """Test commands."""
 
-from gsb import Command, Server, Caller
+from gsb import Command, Parser, Caller
 
-s = Server()
+p = Parser()
 
 
 def command(caller):
@@ -11,33 +11,47 @@ def command(caller):
 
 
 def test_add_command():
-    s.commands.clear()
-    cmd = s.command('^$')(command)
+    p.commands.clear()
+    cmd = p.command(func=command)
     assert isinstance(
         cmd,
         Command
     )
     assert cmd.func is command
-    assert s.commands == [cmd]
+    assert p.commands == {'command': [cmd]}
 
 
 def test_default_kwargs():
-    s.commands.clear()
-    with s.default_kwargs(allowed=7) as add_command:
-        cmd = add_command('^$')(command)
+    p.commands.clear()
+    with p.default_kwargs(allowed=7) as add_command:
+        cmd = add_command(func=command)
         assert isinstance(cmd, Command)
-        assert cmd in s.commands
         assert cmd.func is command
         assert cmd.allowed == 7
-    s.command('^$')(print)
-    assert len(s.commands) == 2
+    p.command(func=print)
+    assert len(p.commands) == 2
 
 
 def test_match_commands():
-    s.commands.clear()
-    s.command('^test$')(command)
-    s.command('^not test$')(print)
-    c = Caller(None, text='test')
-    r = list(s.match_commands(c))
+    p.commands.clear()
+    p.command(names=['test'])(command)
+    p.command(names=['not test'])(print)
+    r = p.get_commands('test')
     assert len(r) == 1
-    assert r[0].command.func is command
+    assert r[0].func is command
+
+
+def test_split():
+    assert p.split('hello world') == ('hello', 'world')
+    assert p.split('hello') == ('hello', '')
+    assert p.split('') == ('', '')
+
+
+def test_names():
+    cmd = p.command(names='test')(print)
+    assert cmd.names == ['test']
+
+
+def test_description():
+    cmd = p.command(func=print)
+    assert cmd.description == print.__doc__

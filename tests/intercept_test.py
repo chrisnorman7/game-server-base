@@ -72,7 +72,8 @@ def menu_command_3(caller):
 
 
 s = Server()
-p = _TestProtocol(s, '127.0.0.1', 1987)  # Pretend protocol.
+d = s.default_parser
+p = _TestProtocol(s, '127.0.0.1', 1987, d)  # Pretend protocol.
 p.connectionMade()
 assert p.line is None
 
@@ -86,8 +87,8 @@ def test_notify():
 
 
 def test_handle_line():
-    s.command('^good$')(good_command)
-    s.command('^bad$')(bad_command)
+    d.command(names='good', func=good_command)
+    d.command(names='bad', func=bad_command)
     p.lineReceived('good'.encode())
     assert p.command == 'good'
     with raises(NotifyException):
@@ -100,6 +101,15 @@ def test_menuitem():
     i = intercept.MenuItem('testing', print)
     assert i.text == 'testing'
     assert i.func == print
+
+
+def test_menulabel():
+    l = intercept.MenuLabel('test', None)
+    l.text == 'test'
+    assert l.after is None
+    i = intercept.MenuItem('Item', print)
+    l = intercept.MenuLabel('whatever', after=i)
+    assert l.after is i
 
 
 def test_menu():
@@ -116,7 +126,7 @@ def test_menu():
     c.text = 'thing'  # Multiple results.
     with raises(NotifyException):
         m.match(c)
-    c.match = 'nothing'
+    c.text = 'nothing'
     with raises(NotifyException):
         assert m.match(c) is None
 
@@ -124,19 +134,26 @@ def test_menu():
 def test_reader():
     def done(caller):
         caller.connection.text = caller.text
+
+    def multiline_done(caller):
+        done(caller)
+
     r = intercept.Reader(done)
     assert r.done is done
-    c = Caller(p, text='testing')
-    r.feed(c)
+    r.handle_line(p, 'testing')
     assert p.text == 'testing'
     r.buffer = ''
     p.text = None
-    r.persistent = True
-    r.feed(Caller(p, text='1'))
+    r.multiline = True
+    r.done = multiline_done
+    r.handle_line(p, '1')
+    assert r.buffer == '1'
     assert p.text is None
-    r.feed(Caller(p, text='2'))
+    r.handle_line(p, '2')
+    assert r.buffer == '1\n2'
     assert p.text is None
-    r.feed(Caller(p, text='.'))
+    r.handle_line(p, r.done_command)
+    assert r.buffer == '1\n2'
     assert p.text == '1\n2'
 
 
@@ -145,18 +162,21 @@ def test_abort():
     not_abortable = intercept.Intercept(
         no_abort='You cannot abort this test thingy'
     )
-    p.intercept = abortable
+    p.parser = s.default_parser
+    p.parser = abortable
+    assert p._parser is abortable
+    assert abortable.old_parser is s.default_parser
     try:
-        p.lineReceived('@abort'.encode())
+        p.lineReceived(abortable.abort_command.encode())
     except NotifyException as e:
         assert str(e) == abortable.aborted
-    assert p.intercept is None
-    p.intercept = not_abortable
+    assert p.parser is s.default_parser
+    p.parser = not_abortable
     try:
         p.lineReceived('@abort'.encode())
     except NotifyException as e:
         assert str(e) == not_abortable.no_abort
-    assert p.intercept is not_abortable
+    assert p.parser is not_abortable
 
 
 def test_subclass_menu():
@@ -191,10 +211,10 @@ def test_yes_or_no():
     assert yon.no is no
     for response in ['yes', 'y', 'ye']:
         with raises(YesException):
-            yon.feed(Caller(p, text=response))
+            yon.handle_line(p, response)
     for response in ['no', 'n', 'anything should be fine here']:
         with raises(NoException):
-            yon.feed(Caller(p, text=response))
+            yon.handle_line(p, response)
 
 
 def test_after():

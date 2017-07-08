@@ -27,11 +27,26 @@ class Protocol(LineReceiver):
     server = attrib()
     host = attrib()
     port = attrib()
+    _parser = attrib()
+
+    @property
+    def parser(self):
+        """Get the current parser."""
+        return self._parser
+
+    @parser.setter
+    def parser(self, value):
+        """Set self._parser."""
+        if self.parser is not None:
+            self._parser.on_detach(self)
+        if value is not None:
+            value.on_attach(self)
+        self._parser = value
 
     def lineReceived(self, line):
         """Handle a line from a client."""
         line = line.decode(sys.getdefaultencoding(), 'ignore')
-        self.server.handle_line(self, line)
+        self.parser.handle_line(self, line)
 
     def connectionMade(self):
         """Call self.server.on_connect."""
@@ -41,7 +56,6 @@ class Protocol(LineReceiver):
                 self.port
             )
         )
-        self.intercept = None
         self.server.connections.append(self)
         self.server.on_connect(Caller(self))
 
