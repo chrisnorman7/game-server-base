@@ -5,10 +5,9 @@ from inspect import isclass
 from datetime import datetime
 from twisted.internet import reactor
 from attr import attrs, attrib, Factory
-from .caller import Caller, DontStopException
+from .caller import Caller
 from .parser import Parser
 from .factory import Factory as ServerFactory
-from .intercept import Intercept, Reader, SpellCheckerMenu
 
 logger = logging.getLogger(__name__)
 
@@ -91,65 +90,6 @@ class Server:
         """A client has disconnected."""
         pass
 
-    def handle_line(self, connection, line):
-        """Handle a line of text from a connection."""
-        # Let's build an instance of Caller:
-        caller = Caller(connection, text=line)
-        if self.on_command(caller):  # Processing can continue.
-            if line == self.abort_command and connection.intercept is not None:
-                if connection.intercept.no_abort:
-                    connection.notify(connection.intercept.no_abort)
-                    return connection.intercept.explain(connection)
-                else:
-                    intercept = connection.intercept
-                    connection.intercept = None
-                    connection.notify(intercept.aborted)
-            elif connection.intercept:
-                intercept = connection.intercept
-                connection.intercept = None
-                if isinstance(
-                    intercept,
-                    Reader
-                ) and line == self.spell_check_command:
-                    connection.notify(
-                        SpellCheckerMenu,
-                        intercept.get_buffer(),
-                        self.reinstate_intercept(intercept)
-                    )
-                else:
-                    try:
-                        intercept.feed(caller)
-                    except Exception as e:
-                        caller.exception = e
-                        logger.warning(
-                            'Intercept %r threw an error:',
-                            intercept
-                        )
-                        logger.exception(e)
-                        self.on_error(caller)
-            else:
-                for match in self.match_commands(caller):
-                    caller.args = match.match.groups()
-                    caller.kwargs = match.match.groupdict()
-                    try:
-                        self.call_command(match.command, caller)
-                    except DontStopException:
-                        continue
-                    except Exception as e:
-                        caller.exception = e
-                        logger.exception(
-                            'Command %r threw an error:',
-                            match.command
-                        )
-                        logger.exception(e)
-                        self.on_error(caller)
-                    break
-                else:
-                    caller.args = None
-                    caller.kwargs = None
-                    caller.match = None
-                    self.huh(caller)
-
     def format_text(self, text, *args, **kwargs):
         """Format text for use with notify and broadcast."""
         if args:
@@ -160,12 +100,12 @@ class Server:
 
     def notify(self, connection, text, *args, **kwargs):
         """Notify connection of text formatted with args and kwargs. Supports
-        instances of, and the instanciation of Intercept."""
+        instances of, and the instanciation of Parser."""
         if connection is not None:
-            if isclass(text) and issubclass(text, Intercept):
+            if isclass(text) and issubclass(text, Parser):
                 text = text(*args, **kwargs)
-            if isinstance(text, Intercept):
-                connection.intercept = text
+            if isinstance(text, Parser):
+                connection.parser = text
                 text.explain(connection)
             else:
                 connection.sendLine(
@@ -181,20 +121,6 @@ class Server:
         text = self.format_text(text, *args, **kwargs)
         for con in self.connections:
             self.notify(con, text)
-
-    def add_command(self, func, *args, **kwargs):
-        """Add func to self.commands."""
-        cmd = self.command_class(func, *args, **kwargs)
-        self.commands.append(cmd)
-        return cmd
-
-    def command(self, *args, **kwargs):
-        """Add a command to the commands list. Passes all arguments to
-        command_class."""
-        def inner(func):
-            """Calls self.add_command with *args and **kwargs."""
-            return self.add_command(func, *args, **kwargs)
-        return inner
 
     def disconnect(self, connection):
         """Disconnect a connection."""
