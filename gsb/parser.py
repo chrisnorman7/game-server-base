@@ -16,6 +16,7 @@ class Parser:
     """
 
     command_separator = attrib(default=Factory(lambda: ' '))
+    command_class = attrib(default=Factory(lambda: Command))
     commands = attrib(default=Factory(dict), repr=False)
     command_substitutions = attrib(default=Factory(dict))
 
@@ -98,7 +99,7 @@ class Parser:
                 'allowed',
                 lambda caller: True
             )
-            c = Command(
+            c = self.command_class(
                 func,
                 names,
                 description,

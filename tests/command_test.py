@@ -3,6 +3,10 @@
 from gsb import Command, Parser, Caller
 
 
+class CustomCommand(Command):
+    pass
+
+
 class DummyProtocol:
     caller = None
 
@@ -85,3 +89,9 @@ def test__command_substitutions():
     p.command_substitutions["'"] = 'say'
     p.handle_line(con, "'test")
     assert con.caller.text == 'say test'
+
+
+def test_command_class():
+    p = Parser(command_class=CustomCommand)
+    cmd = p.command()(print)
+    assert isinstance(cmd, CustomCommand)
