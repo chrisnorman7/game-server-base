@@ -17,6 +17,7 @@ class Parser:
 
     command_separator = attrib(default=Factory(lambda: ' '))
     command_class = attrib(default=Factory(lambda: Command))
+    default_args_regexp = attrib(default=Factory(lambda: None))
     commands = attrib(default=Factory(dict), repr=False)
     command_substitutions = attrib(default=Factory(dict))
 
@@ -94,7 +95,7 @@ class Parser:
                 'help',
                 self.make_command_help(func)
             )
-            args_regexp = kwargs.pop('args_regexp', None)
+            args_regexp = kwargs.pop('args_regexp', self.default_args_regexp)
             allowed = kwargs.pop(
                 'allowed',
                 lambda caller: True
