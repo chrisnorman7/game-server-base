@@ -123,12 +123,10 @@ class Parser:
     def split(self, line):
         """Splits the command and returns (command, args). Both args and string
         should be strings."""
-        split = line.split(self.command_separator)
-        if split:
-            return (
-                split[0],
-                self.command_separator.join(split[1:]))
-        return ('', '')
+        split = line.split(self.command_separator, 1)
+        if len(split) == 1:
+            split.append(split[0].__class__())
+        return split
 
     def post_command(self, caller):
         """Called after 0 or more commands were matched."""

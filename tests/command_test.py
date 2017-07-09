@@ -47,9 +47,10 @@ def test_match_commands():
 
 
 def test_split():
-    assert p.split('hello world') == ('hello', 'world')
-    assert p.split('hello') == ('hello', '')
-    assert p.split('') == ('', '')
+    assert p.split('hello world') == ['hello', 'world']
+    assert p.split('hello') == ['hello', '']
+    assert p.split('') == ['', '']
+    assert p.split('hello cruel world') == ['hello', 'cruel world']
 
 
 def test_names():
