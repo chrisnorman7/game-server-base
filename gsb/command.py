@@ -42,3 +42,7 @@ class Command:
                 self.args_regexp = compile(self.args_regexp)
         if not isinstance(self.names, list):
             self.names = [self.names]
+
+    def ok_for(self, caller):
+        """Check if caller is allowed to access this command."""
+        return self.allowed is None or self.allowed(caller)
