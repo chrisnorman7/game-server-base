@@ -1,24 +1,38 @@
 """Simple chatroom with nickname capabilities."""
 
 import logging
-from attr import attrs, attrib, Factory
-from gsb import Server, Command
+from gsb import Server, Parser
 
 
-@attrs
-class MyCommand(Command):
-    """Give commands a help message."""
-    help = attrib(default=Factory(lambda: None))
+class MainParser(Parser):
+    """The main parser with all the fun stuff."""
 
-    def __attrs_post_init__(self):
-        super(MyCommand, self).__attrs_post_init__()
-        if self.help is None:
-            self.help = self.regexp.pattern
-            while self.help[0] in '^(':
-                self.help = self.help[1:]
-            while self.help[-1] in '$)':
-                self.help = self.help[:-1]
-            self.help = self.help.replace('|', ' or ')
+    def on_attach(self, connection):
+        """Say hello to the connection."""
+        connection.notify(
+            'You are now known as %s.',
+            connection.nickname
+        )
+
+    def huh(self, caller):
+        """Send a chat message."""
+        caller.connection.server.broadcast(
+            '%s: %s',
+            caller.connection.nickname,
+            caller.text
+        )
+
+
+parser = MainParser()
+
+
+class LoginParser(Parser):
+    """Let the connection choose a name."""
+
+    def huh(self, caller):
+        """Set a nickname."""
+        caller.connection.nickname = caller.text
+        caller.connection.parser = parser
 
 
 class MyServer(Server):
@@ -26,9 +40,9 @@ class MyServer(Server):
 
     def on_connect(self, caller):
         """Set a default nickname."""
-        self.notify(
-            caller.connection,
-            'Welcome to the chatroom. Type help for help.'
+        caller.connection.notify(
+            'Welcome to the chatroom. Type /commands for help.\n\n'
+            'What do you want your name to be on this server?'
         )
         caller.connection.nickname = caller.connection.host
         self.broadcast('%s has connected.', caller.connection.nickname)
@@ -40,75 +54,60 @@ class MyServer(Server):
 
 logging.basicConfig(level='INFO')
 
-s = MyServer(command_class=MyCommand)
+s = MyServer(default_parser=LoginParser())
 
 
-@s.command('^/quit$')
+@parser.command(names=['@quit', 'quit'])
 def do_quit(caller):
     """Disconnect from the server."""
     s.notify(caller.connection, 'Goodbye.')
     s.disconnect(caller.connection)
 
 
-@s.command(
-    '^(/commands|\\?)$',
-    help='/commands or ?'
-)
+@parser.command(names=['/commands', '?'])
 def do_commands(caller):
     """Show all commands with brief help messages."""
     s.notify(
         caller.connection,
         'Showing help for %d commands.',
-        len(s.commands)
+        len(parser.commands)
     )
-    for cmd in s.commands:
-        s.notify(
-            caller.connection,
-            '%s\n%s\n',
-            cmd.help,
-            cmd.func.__doc__ or 'No help available.'
-        )
+    for cmd in parser.all_commands():
+        parser.explain(cmd, caller.connection)
 
 
-commands = ['nick', 'nickname', 'name', 'handle']
+commands = ['/nick', '/nickname', '/name', '/handle']
 
 
-@s.command(
-    '^\/(%s) (?P<nickname>[^$]+)$' % '|'.join(commands),
-    help='/%s <nickname>' % ' or '.join(commands)
+@parser.command(
+    names=commands,
+    help=' <nickname>\n'.join(commands),
+    args_regexp='([^$]+)'
 )
 def nickname(caller):
     """Set a nickname."""
-    name = caller.match.groupdict()['nickname']
+    name = caller.args[0]
     for con in s.connections:
         if con.nickname == name:
-            s.notify(caller.connection, 'That nickname is already taken.')
+            caller.connection.notify('That nickname is already taken.')
             break
     else:
         s.broadcast('%s is now known as %s.', caller.connection.nickname, name)
         caller.connection.nickname = name
 
 
-@s.command(
-    '^[\:,`](?P<string>[^$]+)$',
-    help='emote <anything> or :<anything>'
+@parser.command(
+    names='emote',
+    help='emote <anything>',
+    args_regexp='([^$]+)'
 )
 def emote(caller):
     """Emote something."""
     s.broadcast(
         '%s %s',
         caller.connection.nickname,
-        caller.match.groupdict()['string']
+        *caller.args
     )
-
-
-@s.command(
-    '^[^$]+$',
-    help='Type anything else'
-)
-def speak(caller):
-    """Say something."""
-    s.broadcast('%s: %s', caller.connection.nickname, caller.text)
 
 
 if __name__ == '__main__':

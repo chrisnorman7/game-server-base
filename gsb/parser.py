@@ -50,11 +50,11 @@ class Parser:
 
     def make_command_description(self, func):
         """Make a suitable description for a command."""
-        return func.__doc__
+        return func.__doc__ or 'No description available.'
 
     def make_command_help(self, func):
         """Make a suitable help message for a command."""
-        return
+        return 'No help available.'
 
     @contextmanager
     def default_kwargs(self, **kwargs):
@@ -139,7 +139,8 @@ class Parser:
 
     def explain(self, command, connection):
         """Explain command to connection."""
-        connection.notify(' or '.join(command.names))
+        connection.notify('%s:', ' or '.join(command.names))
+        connection.notify(command.description)
         connection.notify(command.help)
 
     def handle_line(self, connection, line, allow_huh=True):
@@ -158,7 +159,7 @@ class Parser:
                 else:
                     m = cmd.args_regexp.match(args)
                     if m is None:
-                        self.explain(command, caller.connection)
+                        self.explain(cmd, caller.connection)
                         break
                     caller.args = m.groups()
                     caller.kwargs = m.groupdict()
