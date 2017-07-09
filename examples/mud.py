@@ -74,7 +74,6 @@ class MainParser(Parser):
 
     def huh(self, caller):
         """Check for exits."""
-        print(caller.text)
         player = caller.connection.player
         x = player.match_exit(caller.text).first()
         if x is not None:
@@ -379,7 +378,7 @@ def describe(caller):
             set_value(caller.text)
 
         player.notify('Enter a new description for %s.', location.name)
-        player.notify(Reader, f, persistent=True)
+        player.notify(Reader, f, multiline=True)
 
     def clear(caller):
         """Clear the room description."""
