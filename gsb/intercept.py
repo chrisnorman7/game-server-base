@@ -52,7 +52,7 @@ class Intercept(Parser):
     abort_command = attrib(default=Factory(lambda: '@abort'))
     no_abort = attrib(default=Factory(lambda: None))
     aborted = attrib(default=Factory(lambda: 'Aborted.'))
-    old_parser = attrib(default=Factory(lambda: None), init=False)
+    old_parser = attrib(default=Factory(lambda: None))
 
     def do_abort(self, caller):
         """Try to abort this caller."""
@@ -73,17 +73,14 @@ class Intercept(Parser):
             self.old_parser = connection.parser
         self.explain(connection)
 
-    def handle_line(self, connection, line, allow_huh=True):
+    def huh(self, caller):
         """Check for self.abort_command."""
+        line = caller.text
         if line == self.abort_command:
-            self.do_abort(Caller(connection, text=line))
-            return 1  # Can be checked by subclasses.
+            self.do_abort(caller)
+            return True  # Let subclasses check.
         else:
-            return super(Intercept, self).handle_line(
-                connection,
-                line,
-                allow_huh=allow_huh
-            )
+            return False
 
 
 @attrs
@@ -223,14 +220,18 @@ class Menu(Intercept, _MenuBase):
         self.send_items(connection, items=matches)
         connection.notify(self.prompt)
 
-    def handle_line(self, connection, line, allow_huh=True):
+    def huh(self, caller):
         """Do the user's bidding."""
-        caller = Caller(connection, text=line)
+        if super(Menu, self).huh(caller):
+            return True
         m = self.match(caller)
         if m is not None:
             m.func(caller)
         if m or not self.persistent:
-            connection.parser = self.old_parser
+            caller.connection.parser = self.old_parser
+        else:
+            self.explain(caller.connection)
+        return True
 
     def match(self, caller):
         """Sent by the server when a menu is found. Returns either an item or
@@ -251,15 +252,10 @@ class Menu(Intercept, _MenuBase):
                     if item.text.lower().startswith(text):
                         items.append(item)
             if not items:  # No matches
-                if not super(Menu, self).handle_line(
-                    caller.connection,
-                    caller.text,
-                    allow_huh=False
-                ):
-                    if self.no_matches is None:
-                        self._no_matches(caller)
-                    else:
-                        self.no_matches(caller)
+                if self.no_matches is None:
+                    self._no_matches(caller)
+                else:
+                    self.no_matches(caller)
             elif len(items) == 1:  # Result!
                 return items[0]
             else:  # Multiple matches.
@@ -290,6 +286,8 @@ class Reader(Intercept, _ReaderBase):
     Sent by self.explain. Can be either a string or a callable which will be
     sent an instance of Caller as its only argument. The caller's text
     attribute will be set to the text of this reader.
+    line_separator
+    The text to join lines of self.buffer with.
     done_command
     The command which is used to finish multiline entry.
     spell_check_command
@@ -310,8 +308,9 @@ class Reader(Intercept, _ReaderBase):
     """
 
     prompt = attrib(default=Factory(lambda: None))
-    spell_check_command = attrib(default=Factory(lambda: '.spell'))
+    line_separator = attrib(default=Factory(lambda: '\n'))
     done_command = attrib(default=Factory(lambda: '.'))
+    spell_check_command = attrib(default=Factory(lambda: '.spell'))
     multiline = attrib(Factory(bool))
     before_line = attrib(default=Factory(lambda: None))
     after_line = attrib(default=Factory(lambda: None))
@@ -353,35 +352,44 @@ class Reader(Intercept, _ReaderBase):
                 caller
             )
 
-    def handle_line(self, connection, line, allow_huh=True):
+    def huh(self, caller):
         """Add the line of text to the buffer."""
-        caller = Caller(connection)
+        line = caller.text
         if self.after_line is not None:
             self.send(self.after_line, caller)
-        if line == self.spell_check_command and SpellCheckerMenu is not None:
-            connection.notify(
-                SpellCheckerMenu,
-                self.buffer,
-                lambda caller: caller.connection.set_parser(self)
-            )
-        elif super(Reader, self).handle_line(
-            connection,
-            line,
-            allow_huh=False
-        ):
-            return
+        if super(Reader, self).huh(caller):
+            return True
+        elif line == self.spell_check_command:
+            if SpellCheckerMenu is not None:
+                caller.connection.notify(
+                    SpellCheckerMenu,
+                    self.buffer,
+                    lambda caller: caller.connection.set_parser(self)
+                )
+            else:
+                caller.connection.notify(
+                    'Spell checking is not available on this system.'
+                )
+            return True
         elif not self.multiline or line != self.done_command:
             if self.buffer:
-                self.buffer = '%s\n%s' % (self.buffer, line)
+                self.buffer = self.line_separator.join(
+                    [
+                        self.buffer,
+                        line
+                    ]
+                )
             else:
-                self.buffer = line
+                self.buffer = caller.text
         caller.text = self.buffer
         if not self.multiline or line == self.done_command:
             self.done(caller)
-            connection.parser = self.old_parser
+            caller.connection.parser = self.old_parser
+            return True
         else:
             if self.before_line is not None:
                 self.send(self.before_line, caller)
+            return False
 
 
 @attrs
@@ -423,22 +431,17 @@ class YesOrNo(Intercept, _YesOrNoBase):
         connection.notify(self.question)
         connection.notify(self.prompt)
 
-    def handle_line(self, connection, line, allow_huh=True):
+    def huh(self, caller):
         """Check for yes or no."""
-        caller = Caller(connection, text=line)
-        if not super(YesOrNo, self).handle_line(
-            connection,
-            line,
-            allow_huh=False
-        ):
-            if line.lower().startswith('y'):
+        if not super(YesOrNo, self).huh(caller):
+            if caller.text.lower().startswith('y'):
                 self.yes(caller)
             else:
                 if self.no is not None:
                     self.no(caller)
                 else:
-                    connection.notify(self.aborted)
-        connection.parser = self.old_parser
+                    caller.connection.notify(self.aborted)
+        caller.connection.parser = self.old_parser
 
 
 @contextmanager

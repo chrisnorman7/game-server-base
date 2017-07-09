@@ -31,6 +31,7 @@ class Parser:
     def huh(self, caller):
         """Notify the connection that we have no idea what it's on about."""
         caller.connection.notify("I don't understand that.")
+        return True
 
     def on_attach(self, connection):
         """This instance has been attached to connection."""
@@ -154,9 +155,9 @@ class Parser:
         connection.notify(command.description)
         connection.notify(command.help)
 
-    def handle_line(self, connection, line, allow_huh=True):
+    def handle_line(self, connection, line):
         """Handle a line of textt from a connection. If no commands are found
-        and allow_huh evaluates to True then self.huh is called with caller."""
+        then self.huh is called with caller."""
         if line and line[0] in self.command_substitutions:
             line = self.command_substitutions[
                 line[0]
@@ -194,7 +195,7 @@ class Parser:
                     caller.exception = e
                     self.on_error(caller)
         else:
-            if not commands and allow_huh:
+            if not commands:
                 self.huh(caller)
         if commands:
             return commands
