@@ -2,6 +2,11 @@
 
 from gsb import Command, Parser, Caller
 
+
+class DummyProtocol:
+    caller = None
+
+
 p = Parser()
 
 
@@ -62,3 +67,20 @@ def test_all_commands():
     first = p.command(func=print)
     second = p.command(func=exec)
     assert p.all_commands() == [first, second]
+
+
+def test__command_substitutions():
+    p.commands.clear()
+    con = DummyProtocol()
+
+    @p.command(args_regexp='(.+)')
+    def say(caller):
+        """Say something."""
+        caller.connection.caller = caller
+
+    p.handle_line(con, 'say whatever')
+    assert con.caller.text == 'say whatever'
+    con.caller = None
+    p.command_substitutions["'"] = 'say'
+    p.handle_line(con, "'test")
+    assert con.caller.text == 'say test'

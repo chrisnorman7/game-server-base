@@ -17,6 +17,7 @@ class Parser:
 
     command_separator = attrib(default=Factory(lambda: ' '))
     commands = attrib(default=Factory(dict), repr=False)
+    command_substitutions = attrib(default=Factory(dict))
 
     def all_commands(self):
         """Get all the command objects present on this parser."""
@@ -137,15 +138,31 @@ class Parser:
         """Get the commands named name."""
         return self.commands.get(name, [])
 
+    def explain_substitution(self, connection, short, long):
+        """Explain command substitutions."""
+        connection.notify(
+            'Instead of typing "%s%s", you can type %s.',
+            long,
+            self.command_separator,
+            short
+        )
+
     def explain(self, command, connection):
         """Explain command to connection."""
         connection.notify('%s:', ' or '.join(command.names))
+        for key, value in self.command_substitutions.items():
+            if value in command.names:
+                self.explain_substitution(connection, key, value)
         connection.notify(command.description)
         connection.notify(command.help)
 
     def handle_line(self, connection, line, allow_huh=True):
         """Handle a line of textt from a connection. If no commands are found
         and allow_huh evaluates to True then self.huh is called with caller."""
+        if line and line[0] in self.command_substitutions:
+            line = self.command_substitutions[
+                line[0]
+            ] + self.command_separator + line[1:]
         caller = Caller(connection, text=line)
         if not self.pre_command(caller):
             return

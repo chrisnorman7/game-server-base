@@ -74,6 +74,7 @@ class MainParser(Parser):
 
     def huh(self, caller):
         """Check for exits."""
+        print(caller.text)
         player = caller.connection.player
         x = player.match_exit(caller.text).first()
         if x is not None:
@@ -91,7 +92,13 @@ class MainParser(Parser):
             return super(MainParser, self).huh(caller)
 
 
-parser = MainParser()
+parser = MainParser(
+    command_substitutions={
+        "'": 'say',
+        '"': 'say',
+        '!': 'shout'
+    }
+)
 
 
 class MudServer(Server):
