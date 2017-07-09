@@ -225,10 +225,10 @@ class Menu(Intercept, _MenuBase):
         if super(Menu, self).huh(caller):
             return True
         m = self.match(caller)
-        if m is not None:
-            m.func(caller)
-        if m or not self.persistent:
+        if m is not None or not self.persistent:
             caller.connection.parser = self.old_parser
+            if m is not None:
+                m.func(caller)
         else:
             self.explain(caller.connection)
         return True
@@ -383,8 +383,8 @@ class Reader(Intercept, _ReaderBase):
                 self.buffer = caller.text
         caller.text = self.buffer
         if not self.multiline or line == self.done_command:
-            self.done(caller)
             caller.connection.parser = self.old_parser
+            self.done(caller)
             return True
         else:
             if self.before_line is not None:
@@ -434,6 +434,7 @@ class YesOrNo(Intercept, _YesOrNoBase):
     def huh(self, caller):
         """Check for yes or no."""
         if not super(YesOrNo, self).huh(caller):
+            caller.connection.parser = self.old_parser
             if caller.text.lower().startswith('y'):
                 self.yes(caller)
             else:
@@ -441,7 +442,6 @@ class YesOrNo(Intercept, _YesOrNoBase):
                     self.no(caller)
                 else:
                     caller.connection.notify(self.aborted)
-        caller.connection.parser = self.old_parser
 
 
 @contextmanager
