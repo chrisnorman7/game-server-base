@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, \
      and_, or_, func
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import sessionmaker, relationship
-from gsb import Server
+from gsb import Server, Parser
 from gsb.intercept import Reader, Menu
 
 
@@ -16,13 +16,92 @@ welcome_msg = """Welcome to this minimal MUD server.
 By what name do they call you?"""
 
 
+class UsernameParser(Parser):
+    """Get a username from the player."""
+
+    def on_attach(self, connection):
+        connection.notify(welcome_msg)
+
+    def huh(self, caller):
+        """Get the username."""
+        obj = Player.objects().filter(
+            func.lower(Player.name) == caller.text
+        ).first()
+        if obj is None:
+            obj = Player(name=caller.text.title(), location=first_room)
+            caller.connection.notify('Created a new player: %s.', obj.name)
+        else:
+            caller.connection.notify('Connecting you as %s.', obj.name)
+        caller.connection.player = obj
+        caller.connection.parser = PasswordParser()
+
+
+class PasswordParser(Parser):
+    """Get the password from the player."""
+
+    def on_attach(self, connection):
+        connection.notify('Password:')
+
+    def huh(self, caller):
+        """Perform a login."""
+        con = caller.connection
+        player = con.player
+        password = caller.text
+        if not password:
+            con.notify('Passwords cannot be blank.')
+        elif player.password is None:
+            player.set_password(password)
+            player.save()
+        if player.check_password(password):
+            if getattr(player, 'connection', None) is not None:
+                old = player.connection
+                old.player = None
+                old.notify('** Reconnecting somewhere else.')
+                server.disconnect(old)
+            con.notify('Welcome back, %s.', player.name)
+            player.connection = con
+            player.do_look()
+            con.parser = parser
+            server.broadcast('%s has connected.', player.name)
+            return
+        else:
+            con.notify('Incorrect password.')
+        con.parser = UsernameParser()
+
+
+class MainParser(Parser):
+    """Adds a huh which checks for directions."""
+
+    def huh(self, caller):
+        """Check for exits."""
+        player = caller.connection.player
+        x = player.match_exit(caller.text).first()
+        if x is not None:
+            for thing in player.location.contents:
+                if thing is player:
+                    thing.notify('You travel through %s.', x.name)
+                else:
+                    thing.notify('%s travels through %s.', player.name, x.name)
+            for thing in x.destination.contents:
+                thing.notify('%s arrives from %s.', player.name, x.name)
+            player.location = x.destination
+            player.do_look()
+            player.save()
+        else:
+            return super(MainParser, self).huh(caller)
+
+
+parser = MainParser()
+
+
 class MudServer(Server):
     """Set things up for the game."""
 
     def on_connect(self, caller):
         """Give it a player object for authentication."""
-        caller.connection.player = None
-        caller.connection.notify(welcome_msg)
+        con = caller.connection
+        con.player = None
+        con.parser = UsernameParser()
 
     def on_disconnect(self, caller):
         """Clear caller.connection.player.connection if it's not None."""
@@ -33,23 +112,8 @@ class MudServer(Server):
                 caller.connection.player.name
             )
 
-    def huh(self, caller):
-        """Check for exits."""
-        player = caller.connection.player
-        if player is not None:
-            x = player.match_exit(caller.text).first()
-            if x is not None:
-                player.notify('You travel through %s.', x.name)
-                for thing in x.destination.contents:
-                    thing.notify('%s arrives from %s.', player.name, x.name)
-                player.location = x.destination
-                player.do_look()
-                player.save()
-                return
-        return super(MudServer, self).huh(caller)
 
-
-server = MudServer()
+server = MudServer(default_parser=None)
 
 
 class _Base:
@@ -226,174 +290,137 @@ if first_room is None:
 # Commands:
 
 
-@server.command('^@?quit$')
+@parser.command(names=['quit', '@quit'])
 def do_quit(caller):
     """Quit the game."""
     caller.connection.notify('Goodbye.')
     server.disconnect(caller.connection)
 
 
-@server.command(
-    '^([^$]+)$',
-    allowed=lambda caller: caller.connection.player is None
+@parser.command(
+    help='dig <name> to <place>\n'
+    'If place starts with a hash (#) character, it is assumed to be the '
+    'id of an existing room.\n'
+    'If there is a comma in the exit name, anything after the comma will '
+    'be used as the exit\'s description.',
+    args_regexp='(.+) to ([^$]+)$'
 )
-def do_connect(caller):
-    """Connect with a character name. If the character doesn't exist then
-    create a new one."""
-    con = caller.connection
-    name = caller.args[0]
-    obj = Player.objects().filter(
-        func.lower(Player.name) == name
-    ).first()
-    if obj is None:
-        obj = Player(name=name.title(), location=first_room)
-        con.notify('Created a new player: %s.', obj.name)
+def dig(caller):
+    """Dig an exit to a new room."""
+    player = caller.connection.player
+    exit_name, destination_name = caller.args
+    if destination_name.startswith('#'):
+        destination = Room.objects().get(destination_name[1:])
     else:
-        con.notify('Connecting you as %s.', obj.name)
-    con.notify('Enter password:')
-
-    def login(caller):
-        """Perform a login."""
-        password = caller.text
-        if not password:
-            con.notify('Passwords cannot be blank.')
-        elif obj.password is None:
-            obj.set_password(password)
-            obj.save()
-        if obj.check_password(password):
-            if hasattr(obj, 'connection') and obj.connection is not None:
-                old = obj.connection
-                old.player = None
-                obj.connection = None
-                old.notify('** Reconnecting somewhere else.')
-                server.disconnect(old)
-            obj.connection = con
-            con.player = obj
-            obj.notify('Welcome back, %s.', obj.name)
-            obj.do_look()
-            server.broadcast('%s has connected.', obj.name)
+        destination = Room(name=destination_name)
+        destination.save()
+        player.notify(
+            'Created room %s (#%d).',
+            destination.name,
+            destination.id
+        )
+    if destination is None:
+        player.notify('Invalid destination: %s.', destination_name)
+    else:
+        if ',' in exit_name:
+            name = exit_name[:exit_name.index(',')].strip()
+            description = exit_name[exit_name.index(',') + 1:]
         else:
-            con.notify('Incorrect password.')
+            name = exit_name
+            description = None
+        for thing in player.location.build_exit(name, destination):
+            thing.description = description
+            thing.save()
+        player.notify('Rooms linked.')
 
-    con.notify(Reader, login)
 
-
-with server.default_kwargs(
-    allowed=lambda caller: caller.connection.player is not None
-) as command:
-    @command('^dig(?: (.+) to ([^$]+))?$')
-    def do_dig(caller):
-        """Dig an exit to a new room."""
-        player = caller.connection.player
-        exit_name, destination_name = caller.args
-        if exit_name is None:
-            player.notify(
-                'Syntax: dig name to place\n'
-                'If place starts with a hash (#) character, it is assumed to '
-                'be the id of an existing room.\n'
-                'If there is a comma in the exit name, anything after the '
-                'comma will be used as the exit\'s description.'
-            )
+@parser.command(names=['l', 'look'], args_regexp='^(?: ([^$]+))?$')
+def do_look(caller):
+    """Look at stuff."""
+    player = caller.connection.player
+    name = caller.args[0]
+    if name is None:
+        player.do_look()
+    else:
+        for thing in player.location.contents:
+            if name in thing.name.lower():
+                player.do_look(target=thing)
+                break
         else:
-            if destination_name.startswith('#'):
-                destination = Room.objects().get(destination_name[1:])
-            else:
-                destination = Room(name=destination_name)
-                destination.save()
-                player.notify(
-                    'Created room %s (#%d).',
-                    destination.name,
-                    destination.id
-                )
-            if destination is None:
-                player.notify('Invalid destination: %s.', destination_name)
-            else:
-                if ',' in exit_name:
-                    name = exit_name[:exit_name.index(',')].strip()
-                    description = exit_name[exit_name.index(',') + 1:]
-                else:
-                    name = exit_name
-                    description = None
-                for thing in player.location.build_exit(name, destination):
-                    thing.description = description
-                    thing.save()
-                player.notify('Rooms linked.')
+            player.notify("I don't see that here.")
 
-    @command('^l(?: ([^$]+))?$')
-    def do_look(caller):
-        """Look at stuff."""
-        player = caller.connection.player
-        name = caller.args[0]
-        if name is None:
-            player.do_look()
-        else:
-            for thing in player.location.contents:
-                if name in thing.name.lower():
-                    player.do_look(target=thing)
-                    break
-            else:
-                player.notify("I don't see that here.")
 
-    @command('^describe$')
-    def do_describe(caller):
-        """Describe this room."""
-        player = caller.connection.player
-        location = player.location
+@parser.command
+def describe(caller):
+    """Describe this room."""
+    player = caller.connection.player
+    location = player.location
 
-        def set_value(value):
-            """Actually set the value."""
-            location.description = value
-            location.save()
-            player.notify(
-                'Description %s.',
-                'cleared' if value is None else 'set'
-            )
-
-        def set(caller):
-            """Set the description."""
-            def f(caller):
-                """Actually do the setting."""
-                set_value(caller.text)
-
-            player.notify('Enter a new description for %s.', location.name)
-            player.notify(Reader, f, persistent=True)
-
-        def clear(caller):
-            """Clear the room description."""
-            set_value(None)
-
-        m = Menu('Describe Menu')
-        m.item('Set Room Description')(set)
-        m.item('Clear Room Description')(clear)
-        player.notify(m)
-
-    @command('^(?:say |\'|")([^$]+)$')
-    def do_say(caller):
-        """Say something."""
-        player = caller.connection.player
-        for obj in player.location.contents:
-            obj.notify('%s says: "%s"', player.name, *caller.args)
-
-    @command('^(?:shout |@shout |!)([^$]+)$')
-    def do_shout(caller):
-        """Shout something to everyone."""
-        server.broadcast(
-            '%s shouts: "%s"',
-            caller.connection.player.name,
-            *caller.args
+    def set_value(value):
+        """Actually set the value."""
+        location.description = value
+        location.save()
+        player.notify(
+            'Description %s.',
+            'cleared' if value is None else 'set'
         )
 
-    @command('^(?:who|@who)$')
-    def do_who(caller):
-        """Show who is logged in."""
-        player = caller.connection.player
-        player.notify('Connected players:')
-        for con in server.connections:
-            if con.player is None:
-                name = 'Unauthenticated player'
-            else:
-                name = con.player.name
-            player.notify('%s from %s:%d', name, con.host, con.port)
+    def set(caller):
+        """Set the description."""
+        def f(caller):
+            """Actually do the setting."""
+            set_value(caller.text)
+
+        player.notify('Enter a new description for %s.', location.name)
+        player.notify(Reader, f, persistent=True)
+
+    def clear(caller):
+        """Clear the room description."""
+        set_value(None)
+
+    m = Menu('Describe Menu')
+    m.item('Set Room Description')(set)
+    m.item('Clear Room Description')(clear)
+    player.notify(m)
+
+
+@parser.command(
+    args_regexp='([^$]+)$',
+    help='say <text>'
+)
+def say(caller):
+    """Say something."""
+    player = caller.connection.player
+    for obj in player.location.contents:
+        obj.notify('%s says: "%s"', player.name, *caller.args)
+
+
+@parser.command(
+    names=['shout', '@shout'],
+    args_regexp='^([^$]+)$',
+    help='shout <anything>'
+)
+def do_shout(caller):
+    """Shout something to everyone."""
+    server.broadcast(
+        '%s shouts: "%s"',
+        caller.connection.player.name,
+        *caller.args
+    )
+
+
+@parser.command
+def who(caller):
+    """Show who is logged in."""
+    player = caller.connection.player
+    player.notify('Connected players:')
+    for con in server.connections:
+        if con.player is None:
+            name = 'Unauthenticated player'
+        else:
+            name = con.player.name
+        player.notify('%s from %s:%d', name, con.host, con.port)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level='INFO')
