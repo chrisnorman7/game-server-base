@@ -95,3 +95,14 @@ def test_command_class():
     p = Parser(command_class=CustomCommand)
     cmd = p.command()(print)
     assert isinstance(cmd, CustomCommand)
+
+
+def test_command_and_args_str():
+    p = Parser()
+
+    @p.command(names='test')
+    def f(caller):
+        assert caller.command == 'test'
+        assert caller.args_str == 'this thing'
+
+    p.handle_line(None, 'test this thing')

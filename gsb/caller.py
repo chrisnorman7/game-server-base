@@ -21,6 +21,10 @@ class Caller:
     The connection which initiated the action.
     text
     The full text of the command (or None if this is an event).
+    command
+    The command extracted from text.
+    args_str
+    The full string arguments from the command.
     match
     The match from the regularexpression which matched to call this command (or
     None if this is an event).
@@ -34,6 +38,8 @@ class Caller:
 
     connection = attrib()
     text = attrib(default=Factory(lambda: None))
+    command = attrib(default=Factory(str))
+    args_str = attrib(default=Factory(str))
     match = attrib(default=Factory(lambda: None))
     args = attrib(default=Factory(tuple))
     kwargs = attrib(default=Factory(dict))

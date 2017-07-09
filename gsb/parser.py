@@ -168,9 +168,11 @@ class Parser:
         if not self.pre_command(caller):
             return
         command, args = self.split(line)
+        caller.command = command
+        caller.args_str = args
         commands = 0  # The number of matched commands.
         for cmd in self.get_commands(command):
-            if cmd.allowed(caller):
+            if cmd.allowed is None or cmd.allowed(caller):
                 if cmd.args_regexp is None:
                     caller.args = ()
                     caller.kwargs = {}
