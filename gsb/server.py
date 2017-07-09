@@ -106,7 +106,6 @@ class Server:
                 text = text(*args, **kwargs)
             if isinstance(text, Parser):
                 connection.parser = text
-                text.explain(connection)
             else:
                 connection.sendLine(
                     self.format_text(
