@@ -47,7 +47,6 @@ class Protocol(LineReceiver):
     def lineReceived(self, line):
         """Handle a line from a client."""
         line = line.decode(sys.getdefaultencoding(), 'ignore')
-        print(self.parser.__class__)
         self.parser.handle_line(self, line)
 
     def connectionMade(self):
