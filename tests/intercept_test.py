@@ -2,7 +2,7 @@
 
 from pytest import raises
 from attr import attrs
-from gsb import Server, Protocol, Caller, intercept
+from gsb import Server, Protocol, Caller, intercept, Parser
 
 
 class YesException(Exception):
@@ -230,3 +230,14 @@ def test_after():
     with raises(RuntimeError):
         with intercept.after(print, 'Never should happen!'):
             raise RuntimeError()
+
+
+def test_switch_parsers():
+    parser = Parser()
+    i = intercept.Intercept()
+    p = Protocol(s, 'localhost', 0, parser)
+    assert p.parser is parser
+    assert p._parser is parser
+    p.parser = i
+    assert p._parser is i
+    assert i.old_parser is parser
