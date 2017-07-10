@@ -40,16 +40,19 @@ class Intercept(Parser):
     no_abort
     Don't let the user use the abort command.
     aborted
-    Line of text sent when a connection successfully uses @abort.
-    abort_hook
-    A function which will be called after a successful abort. Should be
+    Line of text sent when a connection successfully uses @abort. If this value
+    is callable then it shal be treated like a hook and called with a valid
+    Caller instance.
     prepared to take a caller as the only argument.
+    restore_parser
+    Set connection.parser to this value with a successful abort.
     """
 
     abort_command = attrib(default=Factory(lambda: '@abort'))
-    no_abort = attrib(default=Factory(lambda: None))
     aborted = attrib(default=Factory(lambda: 'Aborted.'))
-    abort_hook = attrib(default=Factory(lambda: None))
+    no_abort = restore_parser = attrib(
+        default=Factory(lambda: None)
+    )
 
     def do_abort(self, caller):
         """Try to abort this caller."""
@@ -57,9 +60,10 @@ class Intercept(Parser):
             caller.connection.notify(self.no_abort)
             self.explain(caller.connection)
         else:
-            caller.connection.notify(self.aborted)
-            if self.abort_hook is not None:
-                self.abort_hook(caller)
+            if callable(self.aborted):
+                self.aborted(caller)
+            else:
+                caller.connection.notify(self.aborted)
 
     def explain(self, connection):
         """Tell the connection what we do. Called by self.on_attach."""
@@ -74,6 +78,7 @@ class Intercept(Parser):
         line = caller.text
         if line == self.abort_command:
             self.do_abort(caller)
+            caller.connection.parser = self.restore_parser
             return True  # Let subclasses check.
         else:
             return False
@@ -157,7 +162,7 @@ class Menu(Intercept, _MenuBase):
     instance of Caller and a list of the MenuItem instances which matched.
     Defaults to Menu._multiple_matches.
     persistent
-    Don't call self.abort_hook if no match is found.
+    Don't use self.restore_parser if no match is found.
     """
 
     persistent = attrib(default=Factory(bool))
@@ -206,10 +211,8 @@ class Menu(Intercept, _MenuBase):
         """The connection sent something but it doesn't match any of this menu's
         items."""
         caller.connection.notify('Invalid selection.')
-        if self.persistent:
-            self.explain(caller.connection)
-        elif self.abort_hook is not None:
-            self.abort_hook(caller)
+        if not self.persistent:
+            caller.connection.parser = self.restore_parser
 
     def _multiple_matches(self, caller, matches):
         """The connection entered something but it matches multiple items."""
@@ -224,6 +227,7 @@ class Menu(Intercept, _MenuBase):
             return True
         m = self.match(caller)
         if m is not None:
+            caller.connection.parser = self.restore_parser
             m.func(caller)
         else:
             if self.persistent:
@@ -359,7 +363,12 @@ class Reader(Intercept, _ReaderBase):
         elif line == self.spell_check_command:
             m = caller.connection.server.get_spell_checker(caller)
             if m is not None:
-                caller.connection.notify(m, self.buffer, self.restore)
+                caller.connection.notify(
+                    m,
+                    self.buffer,
+                    self.restore,
+                    restore_parser=None
+                )
             else:
                 caller.connection.notify(
                     'Spell checking is not available on this system.'
@@ -377,6 +386,7 @@ class Reader(Intercept, _ReaderBase):
                 self.buffer = caller.text
         caller.text = self.buffer
         if not self.multiline or line == self.done_command:
+            caller.connection.parser = self.restore_parser
             self.done(caller)
             return True
         else:
@@ -414,16 +424,12 @@ class YesOrNo(Intercept, _YesOrNoBase):
     The prompt which is sent after the question to tell the user what to do.
     """
 
-    no = attrib(
-        default=Factory(
-            lambda: None
-        )
-    )
-    prompt = attrib(
-        default=Factory(
-            lambda: 'Enter "yes" or "no" or @abort to abort the command.'
-        )
-    )
+    no = prompt = attrib(default=Factory(lambda: None))
+
+    def __attrs_post_init__(self):
+        if self.prompt is None:
+            self.prompt = 'Enter "yes" or "no" or %s to abort the command.' % \
+                self.abort_command
 
     def explain(self, connection):
         """Send the connection our question."""
@@ -433,13 +439,14 @@ class YesOrNo(Intercept, _YesOrNoBase):
     def huh(self, caller):
         """Check for yes or no."""
         if not super(YesOrNo, self).huh(caller):
+            caller.connection.parser = self.restore_parser
             if caller.text.lower().startswith('y'):
                 self.yes(caller)
             else:
                 if self.no is not None:
                     self.no(caller)
                 else:
-                    caller.connection.notify(self.aborted)
+                    self.do_abort(caller)
 
 
 @contextmanager

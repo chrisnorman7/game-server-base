@@ -158,9 +158,7 @@ def test_reader():
 
 
 def test_abort():
-    abortable = intercept.Intercept(
-        abort_hook=lambda caller: setattr(caller.connection, 'parser', 'test')
-    )
+    abortable = intercept.Intercept()
     not_abortable = intercept.Intercept(
         no_abort='You cannot abort this test thingy'
     )

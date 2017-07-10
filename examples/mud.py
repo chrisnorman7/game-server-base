@@ -36,6 +36,9 @@ class UsernameParser(Parser):
         caller.connection.parser = PasswordParser()
 
 
+login_parser = UsernameParser()
+
+
 class PasswordParser(Parser):
     """Get the password from the player."""
 
@@ -66,7 +69,7 @@ class PasswordParser(Parser):
             return
         else:
             con.notify('Incorrect password.')
-        con.parser = UsernameParser()
+        con.parser = login_parser
 
 
 class MainParser(Parser):
@@ -107,7 +110,7 @@ class MudServer(Server):
         """Give it a player object for authentication."""
         con = caller.connection
         con.player = None
-        con.parser = UsernameParser()
+        con.parser = login_parser
 
     def on_disconnect(self, caller):
         """Clear caller.connection.player.connection if it's not None."""
@@ -119,7 +122,7 @@ class MudServer(Server):
             )
 
 
-server = MudServer(default_parser=None)
+server = MudServer(default_parser=login_parser)
 
 
 class _Base:
@@ -376,17 +379,15 @@ def describe(caller):
         def f(caller):
             """Actually do the setting."""
             set_value(caller.text)
-            caller.connection.parser = parser
 
         player.notify('Enter a new description for %s.', location.name)
-        player.notify(Reader, f, multiline=True)
+        player.notify(Reader, f, multiline=True, restore_parser=parser)
 
     def clear(caller):
         """Clear the room description."""
         set_value(None)
-        caller.connection.parser = parser
 
-    m = Menu('Describe Menu')
+    m = Menu('Describe Menu', restore_parser=parser)
     m.item('Set Room Description')(set)
     m.item('Clear Room Description')(clear)
     player.notify(m)
