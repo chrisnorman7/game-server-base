@@ -29,6 +29,10 @@ class Protocol(LineReceiver):
     port = attrib()
     _parser = attrib()
 
+    def __attrs_post_init__(self):
+        if self.parser is not None:
+            self.parser.on_attach(self, None)
+
     @property
     def parser(self):
         """Get the current parser."""
