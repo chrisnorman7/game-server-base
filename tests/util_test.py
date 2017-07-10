@@ -16,3 +16,12 @@ def test_command_parsers():
 
     assert 'test' in p1.commands
     assert 'test' in p2.commands
+
+    @command_parsers((p1, p2), names=('test1', 'test2'))
+    def test_2(caller):
+        pass
+
+    assert 'test1' in p1.commands
+    assert 'test2' in p1.commands
+    assert 'test1' in p2.commands
+    assert 'test2' in p2.commands

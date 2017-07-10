@@ -29,18 +29,13 @@ class Command:
     to run this command, False otherwise.
     """
 
-    func = attrib()
-    names = attrib()
-    description = attrib()
-    help = attrib()
-    args_regexp = attrib()
-    allowed = attrib()
+    func = names = description = help = args_regexp = allowed = attrib()
 
     def __attrs_post_init__(self):
         if self.args_regexp is not None:
             if not isinstance(self.args_regexp, _pattern_type):
                 self.args_regexp = compile(self.args_regexp)
-        if not isinstance(self.names, list):
+        if not isinstance(self.names, (list, tuple)):
             self.names = [self.names]
 
     def ok_for(self, caller):
