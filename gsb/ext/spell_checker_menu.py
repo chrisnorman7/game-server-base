@@ -22,6 +22,11 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
 
     ignored = attrib(default=Factory(list), init=False)
 
+    def __attrs_post_init__(self):
+        super(SpellCheckerMenu, self).__attrs_post_init__()
+        self.recursive = True
+        self.persistent = True
+
     def add_word(self, caller):
         """Add caller.word to a personal dictionary."""
         raise NotImplemented
@@ -75,6 +80,7 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
         if word is None:
             word = caller.text  # By-hand replacement.
         self.text = self.text.replace(self.word, word)
+        caller.connection.notify('Replaced %s with %s.', self.word, word)
         self.explain(caller.connection)
 
     def ignore(self, caller):

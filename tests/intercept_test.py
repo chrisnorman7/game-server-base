@@ -158,19 +158,19 @@ def test_reader():
 
 
 def test_abort():
-    abortable = intercept.Intercept()
+    abortable = intercept.Intercept(
+        abort_hook=lambda caller: setattr(caller.connection, 'parser', 'test')
+    )
     not_abortable = intercept.Intercept(
         no_abort='You cannot abort this test thingy'
     )
     p.parser = s.default_parser
     p.parser = abortable
     assert p._parser is abortable
-    assert abortable.old_parser is s.default_parser
     try:
         p.lineReceived(abortable.abort_command.encode())
     except NotifyException as e:
         assert str(e) == abortable.aborted
-    assert p.parser is s.default_parser
     p.parser = not_abortable
     try:
         p.lineReceived('@abort'.encode())
@@ -240,4 +240,3 @@ def test_switch_parsers():
     assert p._parser is parser
     p.parser = i
     assert p._parser is i
-    assert i.old_parser is parser

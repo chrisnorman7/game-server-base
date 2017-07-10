@@ -37,15 +37,17 @@ class Protocol(LineReceiver):
     @parser.setter
     def parser(self, value):
         """Set self._parser."""
-        if self.parser is not None:
-            self._parser.on_detach(self)
-        if value is not None:
-            value.on_attach(self)
+        old_parser = self._parser
+        if old_parser is not None:
+            old_parser.on_detach(self, value)
         self._parser = value
+        if value is not None:
+            value.on_attach(self, old_parser)
 
     def lineReceived(self, line):
         """Handle a line from a client."""
         line = line.decode(sys.getdefaultencoding(), 'ignore')
+        print(self.parser.__class__)
         self.parser.handle_line(self, line)
 
     def connectionMade(self):

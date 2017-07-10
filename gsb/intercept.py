@@ -41,14 +41,15 @@ class Intercept(Parser):
     Don't let the user use the abort command.
     aborted
     Line of text sent when a connection successfully uses @abort.
-    old_parser
-    The parser which was present before this instance was initialised.
+    abort_hook
+    A function which will be called after a successful abort. Should be
+    prepared to take a caller as the only argument.
     """
 
     abort_command = attrib(default=Factory(lambda: '@abort'))
     no_abort = attrib(default=Factory(lambda: None))
     aborted = attrib(default=Factory(lambda: 'Aborted.'))
-    old_parser = attrib(default=Factory(lambda: None))
+    abort_hook = attrib(default=Factory(lambda: None))
 
     def do_abort(self, caller):
         """Try to abort this caller."""
@@ -56,17 +57,16 @@ class Intercept(Parser):
             caller.connection.notify(self.no_abort)
             self.explain(caller.connection)
         else:
-            caller.connection.parser = self.old_parser
             caller.connection.notify(self.aborted)
+            if self.abort_hook is not None:
+                self.abort_hook(caller)
 
     def explain(self, connection):
         """Tell the connection what we do. Called by self.on_attach."""
         pass
 
-    def on_attach(self, connection):
+    def on_attach(self, connection, old_parser):
         """Explain this instance to connnection."""
-        if connection.parser is not self:
-            self.old_parser = connection.parser
         self.explain(connection)
 
     def huh(self, caller):
@@ -135,7 +135,8 @@ class _MenuBase:
 
 @attrs
 class Menu(Intercept, _MenuBase):
-    """A menu object.
+    """
+    A menu object.
 
     Attributes:
     title
@@ -156,8 +157,7 @@ class Menu(Intercept, _MenuBase):
     instance of Caller and a list of the MenuItem instances which matched.
     Defaults to Menu._multiple_matches.
     persistent
-    Don't restore the old parser until a valid match is found, or @abort is
-    sent (assuming this instance is abortable).
+    Don't call self.abort_hook if no match is found.
     """
 
     persistent = attrib(default=Factory(bool))
@@ -208,6 +208,8 @@ class Menu(Intercept, _MenuBase):
         caller.connection.notify('Invalid selection.')
         if self.persistent:
             self.explain(caller.connection)
+        elif self.abort_hook is not None:
+            self.abort_hook(caller)
 
     def _multiple_matches(self, caller, matches):
         """The connection entered something but it matches multiple items."""
@@ -221,12 +223,11 @@ class Menu(Intercept, _MenuBase):
         if super(Menu, self).huh(caller):
             return True
         m = self.match(caller)
-        if m is not None or not self.persistent:
-            caller.connection.parser = self.old_parser
-            if m is not None:
-                m.func(caller)
+        if m is not None:
+            m.func(caller)
         else:
-            self.explain(caller.connection)
+            if self.persistent:
+                self.explain(caller.connection)
         return True
 
     def match(self, caller):
@@ -310,7 +311,7 @@ class Reader(Intercept, _ReaderBase):
     multiline = attrib(Factory(bool))
     before_line = attrib(default=Factory(lambda: None))
     after_line = attrib(default=Factory(lambda: None))
-    buffer = attrib(default=Factory(lambda: None))
+    buffer = attrib(default=Factory(str))
 
     def send(self, thing, caller):
         """If self.name is a callable call it with caller. Otherwise use
@@ -376,7 +377,6 @@ class Reader(Intercept, _ReaderBase):
                 self.buffer = caller.text
         caller.text = self.buffer
         if not self.multiline or line == self.done_command:
-            caller.connection.parser = self.old_parser
             self.done(caller)
             return True
         else:
@@ -386,8 +386,9 @@ class Reader(Intercept, _ReaderBase):
 
     def restore(self, caller):
         """Restore from a spell checker menu."""
+        caller.connection.notify('Spell checking complete.')
         self.buffer = caller.text
-        caller.connection.notify(self)
+        caller.connection.parser = self
 
 
 @attrs
@@ -432,7 +433,6 @@ class YesOrNo(Intercept, _YesOrNoBase):
     def huh(self, caller):
         """Check for yes or no."""
         if not super(YesOrNo, self).huh(caller):
-            caller.connection.parser = self.old_parser
             if caller.text.lower().startswith('y'):
                 self.yes(caller)
             else:

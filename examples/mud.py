@@ -19,7 +19,7 @@ By what name do they call you?"""
 class UsernameParser(Parser):
     """Get a username from the player."""
 
-    def on_attach(self, connection):
+    def on_attach(self, connection, old_parser):
         connection.notify(welcome_msg)
 
     def huh(self, caller):
@@ -39,7 +39,7 @@ class UsernameParser(Parser):
 class PasswordParser(Parser):
     """Get the password from the player."""
 
-    def on_attach(self, connection):
+    def on_attach(self, connection, old_parser):
         connection.notify('Password:')
 
     def huh(self, caller):
@@ -364,7 +364,7 @@ def describe(caller):
 
     def set_value(value):
         """Actually set the value."""
-        location.description = value
+        location.description = value or None
         location.save()
         player.notify(
             'Description %s.',
@@ -376,6 +376,7 @@ def describe(caller):
         def f(caller):
             """Actually do the setting."""
             set_value(caller.text)
+            caller.connection.parser = parser
 
         player.notify('Enter a new description for %s.', location.name)
         player.notify(Reader, f, multiline=True)
@@ -383,6 +384,7 @@ def describe(caller):
     def clear(caller):
         """Clear the room description."""
         set_value(None)
+        caller.connection.parser = parser
 
     m = Menu('Describe Menu')
     m.item('Set Room Description')(set)

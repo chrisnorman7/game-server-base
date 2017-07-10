@@ -35,12 +35,14 @@ class Parser:
         caller.connection.notify("I don't understand that.")
         return True
 
-    def on_attach(self, connection):
-        """This instance has been attached to connection."""
+    def on_attach(self, connection, old_parser):
+        """This instance has been attached to connection to replace
+        old_parser."""
         pass
 
-    def on_detach(self, connection):
-        """This instance has been disconnected from connection."""
+    def on_detach(self, connection, new_parser):
+        """This instance has been disconnected from connection and replaced by
+        new_parser."""
         pass
 
     def on_error(self, caller):
