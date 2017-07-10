@@ -364,7 +364,7 @@ class Reader(Intercept, _ReaderBase):
                 caller.connection.notify(
                     SpellCheckerMenu,
                     self.buffer,
-                    lambda caller: caller.connection.set_parser(self)
+                    self.restore
                 )
             else:
                 caller.connection.notify(
@@ -390,6 +390,11 @@ class Reader(Intercept, _ReaderBase):
             if self.before_line is not None:
                 self.send(self.before_line, caller)
             return False
+
+    def restore(self, caller):
+        """Restore from a spell checker menu."""
+        self.buffer = caller.text
+        caller.connection.notify(self)
 
 
 @attrs
