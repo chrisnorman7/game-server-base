@@ -27,10 +27,6 @@ from contextlib import contextmanager
 from attr import attrs, attrib, Factory, validators
 from .caller import Caller
 from .parser import Parser
-try:
-    from .ext.spell_checker_menu import SpellCheckerMenu
-except ImportError:
-    SpellCheckerMenu = None
 
 
 @attrs
@@ -360,12 +356,9 @@ class Reader(Intercept, _ReaderBase):
         if super(Reader, self).huh(caller):
             return True
         elif line == self.spell_check_command:
-            if SpellCheckerMenu is not None:
-                caller.connection.notify(
-                    SpellCheckerMenu,
-                    self.buffer,
-                    self.restore
-                )
+            m = caller.connection.server.get_spell_checker(caller)
+            if m is not None:
+                caller.connection.notify(m, self.buffer, self.restore)
             else:
                 caller.connection.notify(
                     'Spell checking is not available on this system.'

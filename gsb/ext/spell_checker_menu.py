@@ -5,7 +5,7 @@ from functools import partial
 from enchant import Dict
 from attr import attrs, attrib, Factory
 from ..caller import Caller
-from ..intercept import Menu, Reader
+from .. import intercept
 
 dictionary = Dict()
 
@@ -17,7 +17,7 @@ class _SpellCheckerMenuBase:
 
 
 @attrs
-class SpellCheckerMenu(Menu, _SpellCheckerMenuBase):
+class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
     """A spell checker menu."""
 
     ignored = attrib(default=Factory(list), init=False)
@@ -91,4 +91,4 @@ class SpellCheckerMenu(Menu, _SpellCheckerMenuBase):
     def edit(self, caller):
         """Enter the replacement by hand."""
         caller.connection.notify('Enter the new word:')
-        caller.connection.notify(Reader, self.replace)
+        caller.connection.notify(intercept.Reader, self.replace)

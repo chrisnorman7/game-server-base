@@ -7,6 +7,10 @@ from twisted.internet import reactor
 from attr import attrs, attrib, Factory
 from .caller import Caller
 from .parser import Parser
+try:
+    from .ext.spell_checker_menu import SpellCheckerMenu
+except ImportError:
+    SpellCheckerMenu = None
 from .factory import Factory as ServerFactory
 
 logger = logging.getLogger(__name__)
@@ -38,6 +42,12 @@ class Server:
     default_parser = attrib(default=Factory(Parser), repr=False)
     connections = attrib(default=Factory(list), init=False, repr=False)
     started = attrib(default=Factory(lambda: None), init=False)
+
+    def get_spell_checker(self, caller):
+        """Return a class which can be used for spell checking. This function
+        should return a class dispite the fact that it is called with a fully-
+        formed caller."""
+        return SpellCheckerMenu
 
     def __attrs_post_init__(self):
         if self.factory is None:
