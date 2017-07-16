@@ -1,6 +1,7 @@
 """Contains the Server base class."""
 
 import logging
+from types import MethodType
 from inspect import isclass
 from datetime import datetime
 from twisted.internet import reactor
@@ -134,3 +135,13 @@ class Server:
     def disconnect(self, connection):
         """Disconnect a connection."""
         connection.transport.loseConnection()
+
+    def event(self, func):
+        """A decorator to override methods of self."""
+        name = func.__name__
+        if not hasattr(self, name):
+            raise AttributeError('No attribute named %s to override.' % name)
+        elif not isinstance(getattr(self, name), MethodType):
+            raise TypeError('self.%s is not a method.' % name)
+        else:
+            setattr(self, name, MethodType(func, self))
