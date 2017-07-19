@@ -40,9 +40,14 @@ class Protocol(LineReceiver):
         old_parser = self._parser
         if old_parser is not None:
             old_parser.on_detach(self, value)
+        if value is None:
+            value = self.server.default_parser
+            self.logger.warning(
+                'Attempting to set parser to None. Falling back on %r.',
+                self.server.default_parser
+            )
         self._parser = value
-        if value is not None:
-            value.on_attach(self, old_parser)
+        value.on_attach(self, old_parser)
 
     def lineReceived(self, line):
         """Handle a line from a client."""
