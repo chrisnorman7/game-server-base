@@ -37,7 +37,8 @@ class Intercept(Parser):
     abort_command
     The command the user can use to abort this instance.
     no_abort
-    Don't let the user use the abort command.
+    Don't let the user use the abort command. Can either be a string or a
+    callable with the standard signature.
     aborted
     Line of text sent when a connection successfully uses @abort. If this value
     is callable then it shal be treated like a hook and called with a valid
@@ -45,6 +46,9 @@ class Intercept(Parser):
     prepared to take a caller as the only argument.
     restore_parser
     Set connection.parser to this value with a successful abort.
+
+    When sending things which can either be a callable or a string (like
+    self.no_abort for example), consider using self.send.
     """
 
     abort_command = attrib(default=Factory(lambda: '@abort'))
@@ -52,16 +56,23 @@ class Intercept(Parser):
     no_abort = attrib(default=Factory(lambda: None))
     restore_parser = attrib(default=Factory(lambda: None))
 
+    def send(self, value, caller):
+        """If value is a callable call it with caller. Otherwise use
+        caller.connection.notify to send it to a connection."""
+        if callable(value):
+            value(caller)
+        else:
+            caller.connection.notify(value)
+
     def do_abort(self, caller):
         """Try to abort this caller."""
         if self.no_abort:
-            caller.connection.notify(self.no_abort)
-            self.explain(caller.connection)
+            self.send(self.no_abort, caller)
+            return False
         else:
-            if callable(self.aborted):
-                self.aborted(caller)
-            else:
-                caller.connection.notify(self.aborted)
+            self.send(self.aborted, caller)
+            caller.connection.parser = self.restore_parser
+            return True
 
     def explain(self, connection):
         """Tell the connection what we do. Called by self.on_attach."""
@@ -75,9 +86,7 @@ class Intercept(Parser):
         """Check for self.abort_command."""
         line = caller.text
         if line == self.abort_command:
-            self.do_abort(caller)
-            caller.connection.parser = self.restore_parser
-            return True  # Let subclasses check.
+            return self.do_abort(caller)
         else:
             return False
 
@@ -102,6 +111,10 @@ class MenuItem:
 
     def __str__(self):
         """Return text suitable for printing to a connection."""
+        return self.as_string()
+
+    def as_string(self):
+        """Get a string representation of this item."""
         return '[{0.index}] {0.text}'.format(self)
 
 
@@ -149,7 +162,8 @@ class Menu(Intercept, _MenuBase):
     labels
     A list of MenuLabel instances.
     prompt
-    The line which is sent after all the options.
+    The line which is sent after all the options. Can also be a callable which
+    accepts a Caller instance.
     no_matches
     The connection entered something, but it was invalid. This should be a
     callable and expect to be sent an instance of Caller as its only argument.
@@ -189,7 +203,7 @@ class Menu(Intercept, _MenuBase):
         """Explain this menu to connection."""
         connection.notify(self.title)
         self.send_items(connection)
-        connection.notify(self.prompt)
+        self.send(self.prompt, Caller(connection))
 
     def send_items(self, connection, items=None):
         """Send the provided items to connection. If items is None use
@@ -200,7 +214,7 @@ class Menu(Intercept, _MenuBase):
             if label.after is None:
                 connection.notify(label.text)
         for i in items:
-            connection.notify(str(i))
+            connection.notify(i.as_string())
             for label in self.labels:
                 if label.after is i:
                     connection.notify(label.text)
@@ -292,8 +306,8 @@ class Reader(Intercept, _ReaderBase):
     spell_check_command
     The command which is used to enter the spell checker if it is available.
     multiline
-    This Reader instance expects multiple lines. If True, keep collecting lines
-    until self.done_command is received.
+    Whether or not this Reader instance expects multiple lines. If True, keep
+    collecting lines until self.done_command is received.
     before_line
     Sent before every new line. Can be either a string or a callable which will
     be sent an instance of Caller as its only argument. The caller's text
@@ -314,14 +328,6 @@ class Reader(Intercept, _ReaderBase):
     before_line = attrib(default=Factory(lambda: None))
     after_line = attrib(default=Factory(lambda: None))
     buffer = attrib(default=Factory(str))
-
-    def send(self, thing, caller):
-        """If self.name is a callable call it with caller. Otherwise use
-        caller.connection.notify to send it to a connection."""
-        if callable(thing):
-            thing(caller)
-        else:
-            caller.connection.notify(thing)
 
     def explain(self, connection):
         """Explain this reader."""
