@@ -22,9 +22,8 @@ with after(print, 'Done.'):
 Calls callback with *args and **kwargs after the body has been executed.
 """
 
-import six
 from contextlib import contextmanager
-from attr import attrs, attrib, Factory, validators
+from attr import attrs, attrib, Factory
 from .caller import Caller
 from .parser import Parser
 
@@ -50,9 +49,8 @@ class Intercept(Parser):
 
     abort_command = attrib(default=Factory(lambda: '@abort'))
     aborted = attrib(default=Factory(lambda: 'Aborted.'))
-    no_abort = restore_parser = attrib(
-        default=Factory(lambda: None)
-    )
+    no_abort = attrib(default=Factory(lambda: None))
+    restore_parser = attrib(default=Factory(lambda: None))
 
     def do_abort(self, caller):
         """Try to abort this caller."""
@@ -118,7 +116,7 @@ class MenuLabel:
     The MenuItem instance this label comes after or None if it's at the
     beginning.
     """
-    text = attrib(validator=validators.instance_of(six.string_types))
+    text = attrib()
     after = attrib()
 
     def __str__(self):
@@ -424,7 +422,8 @@ class YesOrNo(Intercept, _YesOrNoBase):
     The prompt which is sent after the question to tell the user what to do.
     """
 
-    no = prompt = attrib(default=Factory(lambda: None))
+    no = attrib(default=Factory(lambda: None))
+    prompt = attrib(default=Factory(lambda: None))
 
     def __attrs_post_init__(self):
         if self.prompt is None:

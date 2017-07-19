@@ -29,7 +29,12 @@ class Command:
     to run this command, False otherwise.
     """
 
-    func = names = description = help = args_regexp = allowed = attrib()
+    func = attrib()
+    names = attrib()
+    description = attrib()
+    help = attrib()
+    args_regexp = attrib()
+    allowed = attrib()
 
     def __attrs_post_init__(self):
         if self.args_regexp is not None:

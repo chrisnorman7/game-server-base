@@ -1,6 +1,6 @@
 """Various allow functions for use with commands."""
 
-from attr import attrs, attrib, validators
+from attr import attrs, attrib
 
 
 def anyone(caller):
@@ -12,7 +12,7 @@ def anyone(caller):
 class FuncPermission:
     """return self.func(x(caller) for x in self.validators"""
 
-    validators = attrib(validator=validators.instance_of(tuple))
+    validators = attrib()
     func = attrib()
 
     def __call__(self, caller):
