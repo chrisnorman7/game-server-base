@@ -73,6 +73,7 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
             text=self.text.format(*self.ignored)
         )
         self.after(caller)
+        caller.connection.parser = self.restore_parser
 
     def replace(self, caller, word=None):
         """Replace a misspelled word with word. If word is None, use
