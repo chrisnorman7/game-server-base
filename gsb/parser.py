@@ -83,7 +83,13 @@ class Parser:
             logger.debug('Context manager closing.')
 
     def command(self, func=None, **kwargs):
-        """A decorator to add a command to this parser."""
+        """
+        A decorator to add a command to this parser.
+
+        Commands are made of instances of self.command_class.
+        Arguments to the constructor will be guessed by the make_command_*
+        methods of this parser.
+        """
         def inner(func):
             names = kwargs.pop(
                 'names',
