@@ -58,9 +58,9 @@ class Protocol(LineReceiver):
             )
         )
         self.server.connections.append(self)
-        self.server.on_connect(Caller(self))
         if self.parser is not None:
             self.parser.on_attach(self, None)
+        self.server.on_connect(Caller(self))
 
     def connectionLost(self, reason):
         """Call self.server.on_disconnect."""
