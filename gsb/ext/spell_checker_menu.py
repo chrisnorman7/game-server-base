@@ -27,6 +27,11 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
         self.recursive = True
         self.persistent = True
 
+    def add(self, caller):
+        """Call self.add_word then explain ourselves."""
+        self.add_word(caller)
+        self.explain(caller.connection)
+
     def add_word(self, caller):
         """Add caller.word to a personal dictionary."""
         raise NotImplemented
@@ -65,7 +70,7 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
                 )
             self.add_label('Actions', self.items[-1])
             self.item('Ignore')(self.ignore)
-            self.item('Add to personal dictionary')(self.add_word)
+            self.item('Add to personal dictionary')(self.add)
             self.item('Edit Word')(self.edit)
             return super(SpellCheckerMenu, self).explain(connection)
         caller = Caller(
