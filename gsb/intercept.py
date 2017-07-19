@@ -68,11 +68,10 @@ class Intercept(Parser):
         """Try to abort this caller."""
         if self.no_abort:
             self.send(self.no_abort, caller)
-            return False
         else:
             self.send(self.aborted, caller)
             caller.connection.parser = self.restore_parser
-            return True
+        return True
 
     def explain(self, connection):
         """Tell the connection what we do. Called by self.on_attach."""
@@ -234,7 +233,7 @@ class Menu(Intercept, _MenuBase):
         connection.notify(self.prompt)
 
     def huh(self, caller):
-        """Do the user's bidding."""
+        """Search for a match in self.items."""
         if super(Menu, self).huh(caller):
             return True
         m = self.match(caller)
