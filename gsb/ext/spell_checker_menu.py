@@ -27,10 +27,13 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
         self.recursive = True
         self.persistent = True
 
-    def add(self, caller):
-        """Call self.add_word then explain ourselves."""
-        self.add_word(caller)
-        self.explain(caller.connection)
+    def do_abort(self, caller):
+        """Return to what we were doing."""
+        self.send(self.aborted, caller)
+        caller.text = self.text
+        caller.connection.parser = self.restore_parser
+        self.after(caller)
+        return True
 
     def add_word(self, caller):
         """Add caller.word to a personal dictionary."""
@@ -80,6 +83,11 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
         self.after(caller)
         caller.connection.parser = self.restore_parser
 
+    def add(self, caller):
+        """Call self.add_word then explain ourselves."""
+        self.add_word(caller)
+        caller.connection.parser = self
+
     def replace(self, caller, word=None):
         """Replace a misspelled word with word. If word is None, use
         caller.text."""
@@ -87,7 +95,7 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
             word = caller.text  # By-hand replacement.
         self.text = self.text.replace(self.word, word)
         caller.connection.notify('Replaced %s with %s.', self.word, word)
-        self.explain(caller.connection)
+        caller.connection.parser = self
 
     def ignore(self, caller):
         """Ignore all occurrances of a misspelled word."""
@@ -98,7 +106,7 @@ class SpellCheckerMenu(intercept.Menu, _SpellCheckerMenuBase):
             word,
             '{%d}' % self.ignored.index(word)
         )
-        self.explain(caller.connection)
+        caller.connection.parser = self
 
     def edit(self, caller):
         """Enter the replacement by hand."""
