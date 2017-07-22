@@ -5,7 +5,7 @@ works."""
 import logging
 import sys
 from twisted.protocols.basic import LineReceiver
-from attr import attrs, attrib
+from attr import attrs, attrib, Factory
 from .caller import Caller
 
 
@@ -28,6 +28,16 @@ class Protocol(LineReceiver):
     host = attrib()
     port = attrib()
     _parser = attrib()
+    encode_args = attrib(
+        default=Factory(
+            lambda: (sys.getdefaultencoding(), 'replace')
+        )
+    )
+    decode_args = attrib(
+        default=Factory(
+            lambda: (sys.getdefaultencoding(), 'ignore')
+        )
+    )
 
     @property
     def parser(self):
@@ -51,7 +61,7 @@ class Protocol(LineReceiver):
 
     def lineReceived(self, line):
         """Handle a line from a client."""
-        line = line.decode(sys.getdefaultencoding(), 'ignore')
+        line = line.decode(*self.decode_args)
         self.parser.handle_line(self, line)
 
     def connectionMade(self):

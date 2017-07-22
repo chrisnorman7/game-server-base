@@ -123,7 +123,7 @@ class Server:
                         text,
                         *args,
                         **kwargs
-                    ).encode()
+                    ).encode(*connection.encode_args)
                 )
 
     def broadcast(self, text, *args, **kwargs):
