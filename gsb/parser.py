@@ -52,7 +52,7 @@ class Parser:
 
     def make_command_names(self, func):
         """Get the name of a command from the name of a function."""
-        return [func.__name__]
+        return [getattr(func, '__name__', 'command')]
 
     def make_command_description(self, func):
         """Make a suitable description for a command."""
