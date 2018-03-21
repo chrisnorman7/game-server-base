@@ -327,6 +327,8 @@ class Reader(Intercept, _ReaderBase):
     before_line = attrib(default=Factory(lambda: None))
     after_line = attrib(default=Factory(lambda: None))
     buffer = attrib(default=Factory(str))
+    done=attrib(default=Factory(lambda: None))
+    
 
     def explain(self, connection):
         """Explain this reader."""
@@ -429,6 +431,8 @@ class YesOrNo(Intercept, _YesOrNoBase):
 
     no = attrib(default=Factory(lambda: None))
     prompt = attrib(default=Factory(lambda: None))
+    yes=attrib(default=Factory(lambda: None))
+    question=attrib(default=Factory(str))
 
     def __attrs_post_init__(self):
         if self.prompt is None:
